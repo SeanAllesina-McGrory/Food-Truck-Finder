@@ -1,27 +1,9 @@
-mod surreal;
-use axum::{
-    extract::Query,
-    response::{Html, IntoResponse},
-    routing::get,
-    Router,
-};
-use serde::Deserialize;
-use tower_http::cors::{Any, CorsLayer};
+mod database;
+pub mod server;
 
 #[tokio::main]
 async fn main() {
-    let resp = surreal::query_db().await;
-    match resp {
-        Ok(_) => println!("Success"),
-        Err(e) => println!("{:?}", e),
-    }
-
-    let cors = CorsLayer::new().allow_origin(Any);
-
-    let app = Router::new()
-        .route("/hello", get(handler_hello))
-        .layer(cors);
-
+    let app = server::make_app();
     // region:      -- Start Server
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
@@ -33,19 +15,3 @@ async fn main() {
 
     // endregion:   -- Start Server
 }
-
-// region:      -- Handlers
-
-#[derive(Debug, Deserialize)]
-struct HelloParams {
-    name: Option<String>,
-}
-
-async fn handler_hello(Query(params): Query<HelloParams>) -> impl IntoResponse {
-    println!("->> {:<12} - handler_hello - {params:?}", "HANDLER");
-
-    let name = params.name.as_deref().unwrap_or("Cruel World!");
-
-    Html(format!("Hello, <strong>{name}</strong>"))
-}
-// endregion:   -- Handlers

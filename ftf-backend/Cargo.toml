@@ -15,5 +15,5 @@ tower-http = { version = "0.5.0", features = ["cors"] }
 httpc-test = "0.1.1"
 anyhow = { version = "1.0" }
 surrealdb = "1.0.0"
-geoutils = "0.5.1"
+geoutils = { version = "0.5.1", features = ["serde"] }
 chrono = "0.4.31"
