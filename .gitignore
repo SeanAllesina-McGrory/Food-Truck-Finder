@@ -1,3 +1,5 @@
 target/*
 ftf-backend/target
 ftf-backend/Cargo.lock
+ftf-backend/run_watcher.sh
+ftf-backend/test_watcher.sh
