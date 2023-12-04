@@ -116,7 +116,20 @@ async fn vendor_add(Query(params): Query<VendorAddParams>) -> impl IntoResponse 
 async fn vendor_remove(Query(params): Query<VendorRemoveParams>) -> impl IntoResponse {
     println!("->> {:<12} - handler vendor_remove - {params:?}", "HANDLER");
 
+    let db = match db_connect().await {
+        Ok(db) => db,
+        Err(err) => return Html(format!("{}", err)),
+    };
+
     let vendor_id = params.vendor_id;
+
+    match db.delete(("vendor", vendor_id.clone())).await {
+        Ok(vendor_option) => match vendor_option {
+            Some(vendor) => vendor,
+            None => return Html(format!("[]")),
+        },
+        Err(err) => return Html(format!("{:?}", err)),
+    };
 
     Html(format!("vendor_id: {vendor_id}"))
 }
