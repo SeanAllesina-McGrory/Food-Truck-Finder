@@ -10,7 +10,7 @@ use serde::Serialize;
 async fn quick_dev() -> Result<()> {
     let hc = httpc_test::new_client("http://localhost:8080")?;
 
-    hc.do_get("/vendor/add?name=War Pig Smokehouse&auth_token=1234")
+    hc.do_get("/vendor/add?name=War Pig Smokehouse&auth_token=12345")
         .await?
         .print()
         .await;
