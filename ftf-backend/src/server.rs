@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use axum::{
     extract::Query,
+    extract::State,
     response::{Html, IntoResponse},
     routing::get,
     Router,
@@ -15,19 +16,35 @@ use surrealdb::opt::auth::Root;
 use surrealdb::Surreal;
 use tower_http::cors::{Any, CorsLayer};
 
-pub fn make_app() -> Router {
+#[derive(Clone)]
+struct AppState {
+    db: Surreal<Client>,
+}
+
+pub async fn make_app() -> Result<Router> {
     let cors = CorsLayer::new().allow_origin(Any);
     let app = Router::new()
         .layer(cors)
-        .route("/vendor/add", get(vendor_add))
+        .route(
+            "/vendor/add",
+            get(|State(state): State<AppState>| async move { Html("Hello") }),
+        )
         .route("/vendor/remove", get(vendor_remove))
         .route("/event/add", get(event_add))
         .route("/event/remove", get(event_remove))
         .route("/menu/add", get(menu_add))
         .route("/menu/remove", get(menu_remove))
         .route("/item/add", get(item_add))
-        .route("/item/remove", get(item_remove));
-    app
+        .route("/item/remove", get(item_remove))
+        .with_state(AppState {
+            db: match db_connect().await {
+                Ok(db) => db,
+                Err(err) => return Err(anyhow!(err)), // TODO : The database could not be created, if this happens a
+                                                      // panic is undesirable but likely, add correcting code
+                                                      // later
+            },
+        });
+    Ok(app)
 }
 
 async fn db_connect() -> Result<Surreal<Client>> {
@@ -123,7 +140,7 @@ async fn vendor_remove(Query(params): Query<VendorRemoveParams>) -> impl IntoRes
 
     let vendor_id = params.vendor_id;
 
-    match db.delete(("vendor", vendor_id.clone())).await {
+    let vendor: Vec<Vendor> = match db.delete(("vendor", vendor_id.clone())).await {
         Ok(vendor_option) => match vendor_option {
             Some(vendor) => vendor,
             None => return Html(format!("[]")),
@@ -131,76 +148,180 @@ async fn vendor_remove(Query(params): Query<VendorRemoveParams>) -> impl IntoRes
         Err(err) => return Html(format!("{:?}", err)),
     };
 
-    Html(format!("vendor_id: {vendor_id}"))
+    Html(format!("{:?}", vendor))
 }
 
 async fn event_add(Query(params): Query<EventAddParams>) -> impl IntoResponse {
     println!("->> {:<12} - handler event_add - {params:?}", "HANDLER");
 
+    let db = match db_connect().await {
+        Ok(db) => db,
+        Err(err) => return Html(format!("{}", err)),
+    };
+
     let datetime = params.datetime;
     let location = params.location;
     let repetition = params.repetition;
-    let vendor_id = params.vendor_id;
 
-    let event = Event {
-        name: Cow::from(""),
-        datetime: Cow::from(datetime.clone()),
-        location: Cow::from(location.clone()),
-        repeat_schedule: Cow::from(repetition.clone()),
-        repeat_end: Cow::from(datetime.clone()),
-        menu: None,
-        vendor: None,
+    let event: Vec<Event> = match db
+        .create("event")
+        .content(Event {
+            name: Cow::from(""),
+            datetime: Cow::from(datetime.clone()),
+            location: Cow::from(location),
+            repeat_schedule: Cow::from(repetition),
+            repeat_end: Cow::from(datetime),
+            menu: None,
+            vendor: None,
+        })
+        .await
+    {
+        Ok(event) => event,
+        Err(err) => return Html(format!("{:?}", err)),
     };
 
-    Html(format!(
-        "datetime: {0}\nlocation: {1}\nrepetition: {2}\nvendor_id: {3:?}",
-        event.datetime, event.location, event.repeat_schedule, event.vendor
-    ))
+    Html(format!("{:?}", event))
 }
 
 async fn event_remove(Query(params): Query<EventRemoveParams>) -> impl IntoResponse {
     println!("->> {:<12} - handler event_remove - {params:?}", "HANDLER");
 
+    let db = match db_connect().await {
+        Ok(db) => db,
+        Err(err) => return Html(format!("{}", err)),
+    };
+
     let event_id = params.event_id;
 
-    Html(format!("event_id: {event_id}"))
+    let event: Vec<Event> = match db.delete(("vendor", event_id.clone())).await {
+        Ok(event_option) => match event_option {
+            Some(event) => event,
+            None => return Html(format!("[]")),
+        },
+        Err(err) => return Html(format!("{:?}", err)),
+    };
+
+    Html(format!("{:?}", event))
 }
 
 async fn menu_add(Query(params): Query<MenuAddParams>) -> impl IntoResponse {
     println!("->> {:<12} - handler menu_add - {params:?}", "HANDLER");
 
+    let db = match db_connect().await {
+        Ok(db) => db,
+        Err(err) => return Html(format!("{}", err)),
+    };
+
     let name = params.name;
+    let items = params.items;
     let vendor_id = params.vendor_id;
 
-    Html(format!("name: {name}\nvendor_id: {vendor_id}"))
+    let menu: Vec<Menu> = match db
+        .create("menu")
+        .content(Menu {
+            name: Cow::from(name),
+            items: Cow::from(items),
+            vendor_id: Cow::from(vendor_id),
+        })
+        .await
+    {
+        Ok(event) => event,
+        Err(err) => return Html(format!("{:?}", err)),
+    };
+    Html(format!("{:?}", menu))
 }
 
 async fn menu_remove(Query(params): Query<MenuRemoveParams>) -> impl IntoResponse {
     println!("->> {:<12} - handler menu_remove - {params:?}", "HANDLER");
 
+    let db = match db_connect().await {
+        Ok(db) => db,
+        Err(err) => return Html(format!("{}", err)),
+    };
+
     let menu_id = params.menu_id;
 
-    Html(format!("menu_id: {menu_id}"))
+    let menu: Vec<Menu> = match db.delete(("menu", menu_id)).await {
+        Ok(menu_option) => match menu_option {
+            Some(menu) => menu,
+            None => return Html(format!("[]")),
+        },
+        Err(err) => return Html(format!("{:?}", err)),
+    };
+
+    Html(format!("{:?}", menu))
 }
 
 async fn item_add(Query(params): Query<ItemAddParams>) -> impl IntoResponse {
     println!("->> {:<12} - handler item_add - {params:?}", "HANDLER");
 
-    let name = params.name;
-    let description = params.description.as_deref().unwrap_or("");
-    let price = params.price.as_deref().unwrap_or("");
-    let picture = params.picture.as_deref().unwrap_or("");
-    let vendor_id = params.vendor_id;
+    let db = match db_connect().await {
+        Ok(db) => db,
+        Err(err) => return Html(format!("{}", err)),
+    };
 
-    Html(format!("name: {name}\ndescription: {description}\nprice: {price}\npicture: {picture}\nvendor_id: {vendor_id}"))
+    let vendor = match db.select(("vendor", params.vendor_id)).await {
+        Ok(option_vendor) => match option_vendor {
+            Some(vendor) => vendor,
+            None => return Html(format!("Vendor not found")),
+        },
+        Err(err) => return Html(format!("{:?}", err)),
+    };
+
+    let name = params.name;
+    let description: String = match params.description {
+        Some(string) => string,
+        None => String::from(""),
+    }
+    .into();
+    let price: String = match params.price {
+        Some(string) => string,
+        None => String::from(""),
+    }
+    .into();
+    let picture: String = match params.picture {
+        Some(string) => string,
+        None => String::from(""),
+    }
+    .into();
+
+    let item: Vec<Item> = match db
+        .create("item")
+        .content(Item {
+            name: Cow::from(name),
+            description: Cow::from(description),
+            price: Cow::from(price),
+            picture: Cow::from(picture),
+            vendor,
+        })
+        .await
+    {
+        Ok(item) => item,
+        Err(err) => return Html(format!("{:?}", err)),
+    };
+
+    Html(format!("{:?}", item))
 }
 
 async fn item_remove(Query(params): Query<ItemRemoveParams>) -> impl IntoResponse {
     println!("->> {:<12} - handler item_remove - {params:?}", "HANDLER");
 
+    let db = match db_connect().await {
+        Ok(db) => db,
+        Err(err) => return Html(format!("{}", err)),
+    };
+
     let item_id = params.item_id;
 
-    Html(format!("item_id: {item_id}"))
+    let item: Vec<Item> = match db.delete(("item", item_id)).await {
+        Ok(item_option) => match item_option {
+            Some(item) => item,
+            None => return Html(format!("[]")),
+        },
+        Err(err) => return Html(format!("{:?}", err)),
+    };
+
+    Html(format!("{:?}", item))
 }
 
 // endregion:   -- Handlers
@@ -282,6 +403,7 @@ struct EventRemoveParams {
 #[derive(Debug, Deserialize)]
 struct MenuAddParams {
     name: String,
+    items: String,
     vendor_id: String,
 }
 
@@ -331,15 +453,15 @@ pub struct Event {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Menu {
     pub name: Cow<'static, str>,
-    pub items: Vec<Item>,
+    pub items: Cow<'static, str>,
+    pub vendor_id: Cow<'static, str>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Item {
     pub name: Cow<'static, str>,
     pub description: Cow<'static, str>,
-    pub price: u32,
-    pub ingredients: Cow<'static, str>,
+    pub price: Cow<'static, str>,
     pub picture: Cow<'static, str>,
     pub vendor: Vendor,
 }
