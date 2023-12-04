@@ -25,10 +25,7 @@ pub async fn make_app() -> Result<Router> {
     let cors = CorsLayer::new().allow_origin(Any);
     let app = Router::new()
         .layer(cors)
-        .route(
-            "/vendor/add",
-            get(|State(state): State<AppState>| async move { Html("Hello") }),
-        )
+        .route("/vendor/add", get(vendor_add))
         .route("/vendor/remove", get(vendor_remove))
         .route("/event/add", get(event_add))
         .route("/event/remove", get(event_remove))
@@ -39,7 +36,7 @@ pub async fn make_app() -> Result<Router> {
         .with_state(AppState {
             db: match db_connect().await {
                 Ok(db) => db,
-                Err(err) => return Err(anyhow!(err)), // TODO : The database could not be created, if this happens a
+                Err(err) => return Err(anyhow!(err)), // FIX : The database could not be created, if this happens a
                                                       // panic is undesirable but likely, add correcting code
                                                       // later
             },
@@ -100,13 +97,13 @@ fn get_db_creds() -> Result<Vec<String>> {
 
 // region:      -- Handlers
 
-async fn vendor_add(Query(params): Query<VendorAddParams>) -> impl IntoResponse {
+async fn vendor_add(
+    Query(params): Query<VendorAddParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     println!("->> {:<12} - handler vendor_add - {params:?}", "HANDLER");
 
-    let db = match db_connect().await {
-        Ok(db) => db,
-        Err(err) => return Html(format!("{}", err)),
-    };
+    let db = state.db;
 
     let vendor: Vec<Vendor> = match db
         .create("vendor")
@@ -130,14 +127,13 @@ async fn vendor_add(Query(params): Query<VendorAddParams>) -> impl IntoResponse 
     Html(format!("{:?}", vendor))
 }
 
-async fn vendor_remove(Query(params): Query<VendorRemoveParams>) -> impl IntoResponse {
+async fn vendor_remove(
+    Query(params): Query<VendorRemoveParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     println!("->> {:<12} - handler vendor_remove - {params:?}", "HANDLER");
 
-    let db = match db_connect().await {
-        Ok(db) => db,
-        Err(err) => return Html(format!("{}", err)),
-    };
-
+    let db = state.db;
     let vendor_id = params.vendor_id;
 
     let vendor: Vec<Vendor> = match db.delete(("vendor", vendor_id.clone())).await {
@@ -151,14 +147,13 @@ async fn vendor_remove(Query(params): Query<VendorRemoveParams>) -> impl IntoRes
     Html(format!("{:?}", vendor))
 }
 
-async fn event_add(Query(params): Query<EventAddParams>) -> impl IntoResponse {
+async fn event_add(
+    Query(params): Query<EventAddParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     println!("->> {:<12} - handler event_add - {params:?}", "HANDLER");
 
-    let db = match db_connect().await {
-        Ok(db) => db,
-        Err(err) => return Html(format!("{}", err)),
-    };
-
+    let db = state.db;
     let datetime = params.datetime;
     let location = params.location;
     let repetition = params.repetition;
@@ -183,14 +178,13 @@ async fn event_add(Query(params): Query<EventAddParams>) -> impl IntoResponse {
     Html(format!("{:?}", event))
 }
 
-async fn event_remove(Query(params): Query<EventRemoveParams>) -> impl IntoResponse {
+async fn event_remove(
+    Query(params): Query<EventRemoveParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     println!("->> {:<12} - handler event_remove - {params:?}", "HANDLER");
 
-    let db = match db_connect().await {
-        Ok(db) => db,
-        Err(err) => return Html(format!("{}", err)),
-    };
-
+    let db = state.db;
     let event_id = params.event_id;
 
     let event: Vec<Event> = match db.delete(("vendor", event_id.clone())).await {
@@ -204,14 +198,13 @@ async fn event_remove(Query(params): Query<EventRemoveParams>) -> impl IntoRespo
     Html(format!("{:?}", event))
 }
 
-async fn menu_add(Query(params): Query<MenuAddParams>) -> impl IntoResponse {
+async fn menu_add(
+    Query(params): Query<MenuAddParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     println!("->> {:<12} - handler menu_add - {params:?}", "HANDLER");
 
-    let db = match db_connect().await {
-        Ok(db) => db,
-        Err(err) => return Html(format!("{}", err)),
-    };
-
+    let db = state.db;
     let name = params.name;
     let items = params.items;
     let vendor_id = params.vendor_id;
@@ -231,14 +224,13 @@ async fn menu_add(Query(params): Query<MenuAddParams>) -> impl IntoResponse {
     Html(format!("{:?}", menu))
 }
 
-async fn menu_remove(Query(params): Query<MenuRemoveParams>) -> impl IntoResponse {
+async fn menu_remove(
+    Query(params): Query<MenuRemoveParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     println!("->> {:<12} - handler menu_remove - {params:?}", "HANDLER");
 
-    let db = match db_connect().await {
-        Ok(db) => db,
-        Err(err) => return Html(format!("{}", err)),
-    };
-
+    let db = state.db;
     let menu_id = params.menu_id;
 
     let menu: Vec<Menu> = match db.delete(("menu", menu_id)).await {
@@ -252,13 +244,13 @@ async fn menu_remove(Query(params): Query<MenuRemoveParams>) -> impl IntoRespons
     Html(format!("{:?}", menu))
 }
 
-async fn item_add(Query(params): Query<ItemAddParams>) -> impl IntoResponse {
+async fn item_add(
+    Query(params): Query<ItemAddParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     println!("->> {:<12} - handler item_add - {params:?}", "HANDLER");
 
-    let db = match db_connect().await {
-        Ok(db) => db,
-        Err(err) => return Html(format!("{}", err)),
-    };
+    let db = state.db;
 
     let vendor = match db.select(("vendor", params.vendor_id)).await {
         Ok(option_vendor) => match option_vendor {
@@ -303,13 +295,13 @@ async fn item_add(Query(params): Query<ItemAddParams>) -> impl IntoResponse {
     Html(format!("{:?}", item))
 }
 
-async fn item_remove(Query(params): Query<ItemRemoveParams>) -> impl IntoResponse {
+async fn item_remove(
+    Query(params): Query<ItemRemoveParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
     println!("->> {:<12} - handler item_remove - {params:?}", "HANDLER");
 
-    let db = match db_connect().await {
-        Ok(db) => db,
-        Err(err) => return Html(format!("{}", err)),
-    };
+    let db = state.db;
 
     let item_id = params.item_id;
 
