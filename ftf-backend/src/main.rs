@@ -1,3 +1,4 @@
+mod surreal;
 use axum::{
     extract::Query,
     response::{Html, IntoResponse},
@@ -9,6 +10,12 @@ use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
 async fn main() {
+    let resp = surreal::query_db().await;
+    match resp {
+        Ok(_) => println!("Success"),
+        Err(e) => println!("{:?}", e),
+    }
+
     let cors = CorsLayer::new().allow_origin(Any);
 
     let app = Router::new()
