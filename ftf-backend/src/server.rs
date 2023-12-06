@@ -4,7 +4,7 @@ use axum::{
     extract::State,
     response::{Html, IntoResponse},
     routing::get,
-    Router,
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -25,12 +25,16 @@ pub async fn make_app() -> Result<Router> {
     let cors = CorsLayer::new().allow_origin(Any);
     let app = Router::new()
         .layer(cors)
+        .route("/vendor/get", get(vendor_get))
         .route("/vendor/add", get(vendor_add))
         .route("/vendor/remove", get(vendor_remove))
+        .route("/event/get", get(event_get))
         .route("/event/add", get(event_add))
         .route("/event/remove", get(event_remove))
+        .route("/menu/get", get(menu_get))
         .route("/menu/add", get(menu_add))
         .route("/menu/remove", get(menu_remove))
+        .route("/item/get", get(item_get))
         .route("/item/add", get(item_add))
         .route("/item/remove", get(item_remove))
         .with_state(AppState {
@@ -97,6 +101,13 @@ fn get_db_creds() -> Result<Vec<String>> {
 
 // region:      -- Handlers
 
+async fn vendor_get(
+    Query(params): Query<VendorGetParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    Json(format!("{}", String::from("Hello, Cruel World!")))
+}
+
 async fn vendor_add(
     Query(params): Query<VendorAddParams>,
     State(state): State<AppState>,
@@ -145,6 +156,13 @@ async fn vendor_remove(
     };
 
     Html(format!("{:?}", vendor))
+}
+
+async fn event_get(
+    Query(params): Query<EventGetParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    Json(format!("{}", String::from("Hello, Cruel World!")))
 }
 
 async fn event_add(
@@ -198,6 +216,13 @@ async fn event_remove(
     Html(format!("{:?}", event))
 }
 
+async fn menu_get(
+    Query(params): Query<MenuGetParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    Json(format!("{}", String::from("Hello, Cruel World!")))
+}
+
 async fn menu_add(
     Query(params): Query<MenuAddParams>,
     State(state): State<AppState>,
@@ -242,6 +267,13 @@ async fn menu_remove(
     };
 
     Html(format!("{:?}", menu))
+}
+
+async fn item_get(
+    Query(params): Query<ItemGetParams>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    Json(format!("{}", String::from("Hello, Cruel World!")))
 }
 
 async fn item_add(
@@ -363,6 +395,11 @@ impl fmt::Display for ReoccurancePattern {
 }
 
 #[derive(Debug, Deserialize)]
+struct VendorGetParams {
+    vendor_id: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct VendorAddParams {
     name: String,
     auth_token: String,
@@ -380,6 +417,11 @@ struct VendorRemoveParams {
 }
 
 #[derive(Debug, Deserialize)]
+struct EventGetParams {
+    event_id: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct EventAddParams {
     datetime: String,
     location: String,
@@ -393,6 +435,11 @@ struct EventRemoveParams {
 }
 
 #[derive(Debug, Deserialize)]
+struct MenuGetParams {
+    menu_id: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct MenuAddParams {
     name: String,
     items: String,
@@ -402,6 +449,11 @@ struct MenuAddParams {
 #[derive(Debug, Deserialize)]
 struct MenuRemoveParams {
     menu_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ItemGetParams {
+    item_id: String,
 }
 
 #[derive(Debug, Deserialize)]

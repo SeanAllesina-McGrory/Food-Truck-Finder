@@ -10,12 +10,22 @@ use serde::Serialize;
 async fn quick_dev() -> Result<()> {
     let hc = httpc_test::new_client("http://localhost:8080")?;
 
+    hc.do_get("/vendor/get?vendor_id=n2cfynuwl9s5y9967xnk")
+        .await?
+        .print()
+        .await;
+
     hc.do_get("/vendor/add?name=War Pig Smokehouse&auth_token=12345")
         .await?
         .print()
         .await;
 
     hc.do_get("/vendor/remove?vendor_id=War Pig Smokehouse")
+        .await?
+        .print()
+        .await;
+
+    hc.do_get("/event/get?event_id=2ghydtjsubk8ip9f4mzd")
         .await?
         .print()
         .await;
@@ -28,7 +38,7 @@ async fn quick_dev() -> Result<()> {
 
     hc.do_get(
         format!(
-            "/event/add?datetime={0}&location={1}&repetition={2}&vendor_id=123",
+            "/event/add?datetime={0}&location={1}&repetition={2}&vendor_id=n2cfynuwl9s5y9967xnk",
             datetime, location, repetition
         )
         .as_str(),
@@ -39,12 +49,22 @@ async fn quick_dev() -> Result<()> {
 
     hc.do_get("/event/remove?event_id=123").await?.print().await;
 
+    hc.do_get("/menu/get?menu_id=z3vor00unpw3to3synfm")
+        .await?
+        .print()
+        .await;
+
     hc.do_get("/menu/add?name=name&vendor_id=123")
         .await?
         .print()
         .await;
 
     hc.do_get("/menu/remove?menu_id=123").await?.print().await;
+
+    hc.do_get("/item/get?item_id=jswl4z6ynnaai2n4kdhp")
+        .await?
+        .print()
+        .await;
 
     hc.do_get("/item/add?name=name&vendor_id=123")
         .await?
