@@ -3,67 +3,234 @@
 mod server;
 #[path = "../src/database.rs"]
 mod database;
-use crate::database::models::{ReoccurancePattern, Vendor, Item};
-use anyhow::Result;
+use crate::database::models::{ReoccurancePattern, Vendor, Item, Menu, Event};
 use chrono::prelude::*;
 use geoutils::Location;
-use serde::Serialize;
+use serde::{ Deserialize, Serialize };
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
+use std::{ fs::File, io::Read };
+use csv::{ReaderBuilder, StringRecord};
+use anyhow::{Result, anyhow};
+use argon2::{
+    password_hash::{
+        rand_core::OsRng,
+        PasswordHash, PasswordHasher, PasswordVerifier, SaltString
+    },
+    Argon2
+};
+use std::borrow::Cow;
+use encoding_rs::WINDOWS_1252;
+use encoding_rs_io::DecodeReaderBytesBuilder;
 
-#[tokio::test]
-async fn database_dev() -> Result<()> {
-    let db: Surreal<Client> = server::app::db_connect().await.unwrap();
-    
-    let vendor1 = Vendor::new(String::from("Song2"),String::from("1111"));
+#[derive(Debug, Deserialize)]
+struct VendorRecord {
+    name: String,
+    phone: String,
+    email: String,
+    county: String,
+}
 
-    println!("Hello, Cruel World!");
-
-    let vendor_db: Vendor = db.create(("vendor", vendor1.uuid.to_string().clone())).content(vendor1.clone()).await?.unwrap();
-
-    println!("{:?}", vendor1);
-
-    let vendor: Vec<Vendor> = match db.select("vendor").await {
-        Ok(vendor) => vendor,
-        Err(err) => {
-            println!("Inside the err");
-            println!("{:?}", err); 
-            return Ok(());
+impl VendorRecord {
+    fn new(records: StringRecord) -> Self {
+        Self {
+            name: records.get(0).unwrap().to_string(),
+            phone: records.get(1).unwrap_or("").to_string(),
+            email: records.get(2).unwrap().to_string(),
+            county: records.get(3).unwrap().to_string(),
         }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct EventRecord {
+    name: String,
+    datetime: String,
+    location: String,
+    end_date: String,
+}
+
+impl EventRecord {
+    fn new(records: StringRecord) -> Self {
+        Self {
+            name: records.get(0).unwrap().to_string(),
+            datetime: records.get(1).unwrap().to_string(),
+            location: records.get(2).unwrap().to_string(),
+            end_date: records.get(3).unwrap().to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct MenuRecord {
+    item1: String,
+    item2: String,
+    item3: String,
+}
+
+impl MenuRecord {
+    fn new(records: StringRecord) -> Self {
+        Self {
+            item1: records.get(0).unwrap().to_string(),
+            item2: records.get(1).unwrap().to_string(),
+            item3: records.get(2).unwrap().to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct ItemRecord {
+    name: String,
+    description: String,
+    ingredients: String,
+}
+
+impl ItemRecord {
+    fn new(records: StringRecord) -> Self {
+        Self {
+            name: records.get(0).unwrap().to_string(),
+            description: records.get(1).unwrap().to_string(),
+            ingredients: records.get(2).unwrap().to_string(),
+        }
+    }
+}
+
+fn read_csv<F, T>(filename: String, constructor: F) -> Result<Vec<T>> 
+where
+    F: Fn(StringRecord) -> T,
+{
+
+    let file = match File::open(filename) {
+        Ok(file) => file,
+        Err(err) => return Err(anyhow!("{:?}", err)),
     };
+    let transcoded = DecodeReaderBytesBuilder::new()
+        .encoding(Some(WINDOWS_1252))
+        .build(file);
+    let mut rdr = csv::ReaderBuilder::new()
+        .delimiter(b',')
+        .from_reader(transcoded);
 
-    println!("Hello");
+    let vendors: Vec<_> = rdr.records().map(|record_wrapped| {
+        match record_wrapped {
+            Ok(record) => record,
+            Err(_) => StringRecord::new(),
+        }
+    })
+    .map(|record| {
+        constructor(record)
+    }).collect();
 
-    vendor.iter().filter(|v| {
-        v.name == "Song2"
-    }).for_each(|v| {
-        println!("{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{:?}\n{:?}\n",
-                 v.uuid,
-                 v.name,
-                 v.auth_token,
-                 v.description,
-                 v.vendor_type,
-                 v.email,
-                 v.phone_number,
-                 v.website,
-                 v.events,
-                 v.menu);
-    });
+    Ok(vendors)
+}
 
-    let item = Item::new(String::from("Taco"), vendor1);
+async fn repopulate_database() -> Result<()> {
+    let params: argon2::Params = argon2::Params::new(16, 1, 1, 32.into()).unwrap();
+    // Setup our connection to the database
+    let db: Surreal<Client> = server::app::db_connect().await.unwrap();
 
-    println!("Hello world");
+    // Delete all the vendors since we dont want our database getting massive
+    // Add the throwaway arg so Rust can infer the typing of the deleted elements
+    let _: Vec<Vendor> = db.delete("vendors").await?;
+    
+    let vendor_records = read_csv("./vendors.csv".into(),|v| VendorRecord::new(v)).unwrap();
 
-    println!("{}", item);
+    let vendors_vec: Vec<Vendor> = vendor_records.iter().map(|vendor_record| {
+        let salt = SaltString::generate(&mut OsRng);
 
-    let item: Item = db.create(("item", item.uuid.to_string().clone())).content(item).await?.unwrap();
+        let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params.clone());
 
+        let password_hash = argon2.hash_password(vendor_record.name.clone().as_bytes(), &salt).unwrap().to_string();
+
+        let mut vendor: Vendor = Vendor::new(vendor_record.name.clone(), password_hash);
+        vendor.phone_number = Cow::Owned(vendor_record.phone.clone());
+        vendor.email = Cow::Owned(vendor_record.email.clone());
+        vendor
+    }).collect();
+    
+    for vendor in vendors_vec {
+        let _: Vendor = db.create(("vendors", vendor.uuid.to_string())).content(vendor).await.unwrap().unwrap();
+    }
+
+    let vendors: Vec<Vendor> = db.select("vendors").await?;
+
+    /*vendors.iter().for_each(|vendor| {
+        println!("{}\n", vendor);
+    });*/
+
+    let mut vendors = vendors.into_iter();
+
+    let _: Vec<Event> = db.delete("events").await?;
+
+    let event_records = read_csv("./events.csv".into(), |e| EventRecord::new(e)).unwrap();
+
+    let events_vec: Vec<Event> = event_records.iter().map(|event_record| {
+        let mut event: Event = Event::new(event_record.datetime.clone(), event_record.location.clone(), vendors.next().unwrap());
+        event.repeat_end = Cow::Owned(event_record.end_date.clone());
+        event.name = Cow::Owned(event_record.name.clone());
+        event
+    }).collect();
+
+    for event in events_vec {
+        let _: Event = db.create(("events", event.uuid.to_string())).content(event).await.unwrap().unwrap();
+    }
+
+    let events: Vec<Event> = db.select("events").await?;
+
+    vendors = db.select("vendors").await?.into_iter();
+
+    /*events.iter().for_each(|event| {
+        println!("{:?}\n", event);
+    });*/
+
+    let _: Vec<Menu> = db.delete("menus").await?;
+
+    let menu_records = read_csv("./menus.csv".into(), |m| MenuRecord::new(m)).unwrap();
+
+    let menus_vec: Vec<Menu> = menu_records.iter().map(|menu_record| {
+        let mut menu: Menu = Menu::new(format!("{}:{}:{}", menu_record.item1.clone(), menu_record.item2.clone(), menu_record.item3.clone()), vendors.next().unwrap());
+        menu
+    }).collect();
+
+    for menu in menus_vec {
+        let _: Menu = db.create(("menus", menu.uuid.to_string())).content(menu).await.unwrap().unwrap();
+    }
+
+    let menus: Vec<Menu> = db.select("menus").await?;
+
+    vendors = db.select("vendors").await?.into_iter();
+
+    /*menus.iter().for_each(|menu| {
+        println!("{:?}\n", menu);
+    });*/
+
+    let _: Vec<Item> = db.delete("items").await?;
+
+    let item_records = read_csv("./food.csv".into(), |i| ItemRecord::new(i)).unwrap();
+
+    let items_vec: Vec<Item> = item_records.iter().map(|item_record| {
+        let mut item: Item = Item::new(item_record.name.clone(), vendors.next().unwrap());
+        item.description = Cow::Owned(item_record.description.clone());
+        item
+    }).collect();
+
+
+    for item in items_vec {
+        let _: Item = db.create(("items", item.uuid.to_string())).content(item).await.unwrap().unwrap();
+    }
+
+    let items: Vec<Item> = db.select("items").await?;
+
+    /*items.iter().for_each(|item| {
+        println!("{:?}Test\n", item);
+    });*/
 
     Ok(())
 }
 
 #[tokio::test]
 async fn quick_dev() -> Result<()> {
+    repopulate_database().await?;
     let hc = httpc_test::new_client("http://localhost:8080")?;
 
     hc.do_get("/vendor/get?vendor_id=n2cfynuwl9s5y9967xnk")

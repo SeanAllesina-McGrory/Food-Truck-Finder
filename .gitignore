@@ -4,3 +4,4 @@ ftf-backend/Cargo.lock
 ftf-backend/run_watcher.sh
 ftf-backend/test_watcher.sh
 SurrealDB
+ftf-backend/*.csv

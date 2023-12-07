@@ -15,7 +15,7 @@ pub struct Vendor {
     pub phone_number: Cow<'static, str>,
     pub website: Cow<'static, str>,
     pub events: Vec<Event>,
-    pub menu: Vec<Item>,
+    pub menus: Vec<Item>,
 }
 
 impl Vendor {
@@ -30,8 +30,14 @@ impl Vendor {
                 phone_number: String::from("").into(),
                 website: String::from("").into(),
                 events: vec![],
-                menu: vec![],
+                menus: vec![],
          }
+    }
+}
+
+impl fmt::Display for Vendor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "UUID: {}\nName: {}\nAuth Token: {}\nDescription: {}\nVendor Type: {}\nEmail: {}\nPhone Number: {}\nWebsite: {}\nEvents: {:?}\nMenus: {:?}", self.uuid, self.name, self.auth_token, self.description, self.vendor_type, self.email, self.phone_number, self.website, self.events, self.menus)
     }
 }
 
@@ -90,6 +96,12 @@ impl Event {
     }
 }
 
+impl fmt::Display for Event {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "UUID: {}\nName: {}\nDateTime: {}\nLocation: {}\nMenu: {:?}\nRepeats: {}\nEnds: {}\nVendor: {:?}", self.uuid, self.name, self.datetime, self.location, self.menu, self.repeat_schedule, self.repeat_end, self.vendor)
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct EventGetParams {
     pub event_id: String,
@@ -113,7 +125,8 @@ pub struct Menu {
     pub uuid: Cow<'static, str>,
     pub name: Cow<'static, str>,
     pub items: Cow<'static, Vec<Item>>,
-    pub vendor: Cow<'static, Vendor>,
+    pub vendor: Cow<'static, Vendor>, // FIX: Vendor is a Cow is some instances and a vendor in
+                                      // others, Choose one
 }
 
 impl Menu {
@@ -124,6 +137,12 @@ impl Menu {
             items: Cow::Owned(Vec::new()),
             vendor: vendor.into(),
         }
+    }
+}
+
+impl fmt::Display for Menu {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "UUID: {}\nName: {}\nItems: {:?}\nVendor: {}", self.uuid, self.name, self.items, self.vendor)
     }
 }
 
