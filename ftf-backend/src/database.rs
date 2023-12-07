@@ -1,1 +1,2 @@
-pub struct Database {}
+#[path = "./database/models.rs"]
+pub mod models;
