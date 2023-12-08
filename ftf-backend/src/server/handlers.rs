@@ -11,22 +11,51 @@ pub async fn vendor_get(
     Query(params): Query<models::VendorGetParams>,
     State(state): State<state::AppState>,
 ) -> impl IntoResponse {
-    println!("--> {:<12} - handler vendor_get - {params:?}", "HANDLER");
-
-    let db = state.db;
-    match params.vendor_id {
-        Some(vendor_id) => return Json(format!("{:?}", vendor_id)),
-        None => {
-            let vendor: Vec<Vendor> = match db.select("vendor").await {
-                Ok(vendor) => vendor,
-                Err(err) => {
-                    println!("{:?}", err);
-                    return Json(format!("{:?}", err));
-                }
-            };
-            Json(format!("{:?}", vendor))
-        }
+    if let Some(vendor_id) = params.vendor_id {
+        let vendor_result: Result<Option<Vendor>, surrealdb::Error> =
+            state.db.select(("vendors", vendor_id)).await;
+        let vendor_option = match vendor_result {
+            Ok(vendor_option) => vendor_option,
+            Err(_) => return Json::default(),
+        };
+        let vendor = match vendor_option {
+            Some(vendor) => vendor,
+            None => return Json::default(),
+        };
+        return Json(vec![vendor]);
+    } else if let Some(event_id) = params.event_id {
+        let vendors_vec_result: Result<Vec<Vendor>, surrealdb::Error> =
+            state.db.select("vendors").await;
+        let vendors_vec: Vec<Vendor> = match vendors_vec_result {
+            Ok(vendors_vec) => vendors_vec,
+            Err(err) => {
+                println!("{:?}", err);
+                return Json::default();
+            }
+        };
+        println!("{:?}", vendors_vec);
+        let vendors_vec: Vec<Vendor> = vendors_vec
+            .iter()
+            .map(|v| v.clone())
+            .filter(|vendor| {
+                &vendor
+                    .events
+                    .iter()
+                    .map(|e| e.clone())
+                    .filter(|event| event.uuid == event_id)
+                    .collect::<Vec<Event>>()
+                    .len()
+                    .into()
+                    != 0
+            })
+            .collect::<Vec<Vendor>>();
+        return Json(vendors_vec);
+    } else if let Some(menu_id) = params.menu_id {
+        todo!();
+    } else if let Some(item_id) = params.item_id {
+        todo!();
     }
+    Json::default()
 }
 
 pub async fn vendor_add(
@@ -73,7 +102,36 @@ pub async fn event_get(
     Query(params): Query<models::EventGetParams>,
     State(state): State<state::AppState>,
 ) -> impl IntoResponse {
-    Json(format!("{}", String::from("Hello, Cruel World!")))
+    if let Some(event_id) = params.event_id {
+        let event_result: Result<Option<Event>, surrealdb::Error> =
+            state.db.select(("events", event_id)).await;
+        let event_option = match event_result {
+            Ok(event_option) => event_option,
+            Err(err) => return Json::default(),
+        };
+        let event = match event_option {
+            Some(event) => event,
+            None => return Json::default(),
+        };
+        return Json(vec![event]);
+    } else if let Some(vendor_id) = params.vendor_id {
+        let events_vec_result: Result<Vec<Event>, surrealdb::Error> =
+            state.db.select("events").await;
+        let events_vec = match events_vec_result {
+            Ok(events_vec) => events_vec,
+            Err(_) => Vec::new(),
+        };
+        let events_vec: Vec<Event> = events_vec
+            .iter()
+            .map(|e| e.clone())
+            .filter(|event| match &event.vendor {
+                Some(vendor) => vendor.uuid == vendor_id,
+                None => false,
+            })
+            .collect();
+        return Json(events_vec);
+    }
+    Json::default()
 }
 
 pub async fn event_add(
@@ -83,7 +141,7 @@ pub async fn event_add(
     println!("->> {:<12} - handler event_add - {params:?}", "HANDLER");
 
     let db = state.db;
-    
+
     let vendor = match db.select(("vendor", params.vendor_id)).await {
         Ok(option_vendor) => match option_vendor {
             Some(vendor) => vendor,
@@ -98,7 +156,12 @@ pub async fn event_add(
 
     let event: Vec<Event> = match db
         .create("event")
-        .content(Event::new(String::from("Now"), String::from("There"), vendor)).await
+        .content(Event::new(
+            String::from("Now"),
+            String::from("There"),
+            vendor,
+        ))
+        .await
     {
         Ok(event) => event,
         Err(err) => return Html(format!("{:?}", err)),
@@ -145,15 +208,11 @@ pub async fn menu_add(
         },
         Err(err) => return Html(format!("{:?}", err)),
     };
-    
+
     let name = params.name;
     let items: String = params.items.unwrap_or(String::from("")).into();
 
-    let menu: Vec<Menu> = match db
-        .create("menu")
-        .content(Menu::new(name, vendor))
-        .await
-    {
+    let menu: Vec<Menu> = match db.create("menu").content(Menu::new(name, vendor)).await {
         Ok(event) => event,
         Err(err) => return Html(format!("{:?}", err)),
     };
@@ -220,11 +279,7 @@ pub async fn item_add(
     }
     .into();
 
-    let item: Vec<Item> = match db
-        .create("item")
-        .content(Item::new(name, vendor))
-        .await
-    {
+    let item: Vec<Item> = match db.create("item").content(Item::new(name, vendor)).await {
         Ok(item) => item,
         Err(err) => return Html(format!("{:?}", err)),
     };

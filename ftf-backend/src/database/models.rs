@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::borrow::Cow;
-use crate::database::models;
+use std::fmt;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -20,18 +19,18 @@ pub struct Vendor {
 
 impl Vendor {
     pub fn new(name: String, auth_token: String) -> Self {
-         Vendor {
-                uuid: Cow::Owned(Uuid::new_v4().to_string().into()),
-                name: name.into(),
-                auth_token: auth_token.into(),
-                description: String::from("").into(),
-                vendor_type: String::from("").into(),
-                email: String::from("").into(),
-                phone_number: String::from("").into(),
-                website: String::from("").into(),
-                events: vec![],
-                menus: vec![],
-         }
+        Vendor {
+            uuid: Cow::Owned(Uuid::new_v4().to_string().into()),
+            name: name.into(),
+            auth_token: auth_token.into(),
+            description: String::from("").into(),
+            vendor_type: String::from("").into(),
+            email: String::from("").into(),
+            phone_number: String::from("").into(),
+            website: String::from("").into(),
+            events: vec![],
+            menus: vec![],
+        }
     }
 }
 
@@ -47,9 +46,29 @@ impl Into<Cow<'static, Vendor>> for Vendor {
     }
 }
 
+impl Default for Vendor {
+    fn default() -> Self {
+        Vendor {
+            uuid: "".into(),
+            name: "".into(),
+            auth_token: "".into(),
+            description: "".into(),
+            vendor_type: "".into(),
+            email: "".into(),
+            phone_number: "".into(),
+            website: "".into(),
+            events: Vec::new(),
+            menus: Vec::new(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct VendorGetParams {
     pub vendor_id: Option<String>,
+    pub event_id: Option<String>,
+    pub menu_id: Option<String>,
+    pub item_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -102,9 +121,25 @@ impl fmt::Display for Event {
     }
 }
 
-#[derive(Debug, Deserialize)]
+impl Default for Event {
+    fn default() -> Self {
+        Event {
+            uuid: "".into(),
+            name: "".into(),
+            datetime: "".into(),
+            location: "".into(),
+            menu: None,
+            repeat_schedule: ReoccurancePattern::None.into(),
+            repeat_end: "".into(),
+            vendor: None,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct EventGetParams {
-    pub event_id: String,
+    pub event_id: Option<String>,
+    pub vendor_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -142,7 +177,22 @@ impl Menu {
 
 impl fmt::Display for Menu {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "UUID: {}\nName: {}\nItems: {:?}\nVendor: {}", self.uuid, self.name, self.items, self.vendor)
+        write!(
+            f,
+            "UUID: {}\nName: {}\nItems: {:?}\nVendor: {}",
+            self.uuid, self.name, self.items, self.vendor
+        )
+    }
+}
+
+impl Default for Menu {
+    fn default() -> Self {
+        Menu {
+            uuid: "".into(),
+            name: "".into(),
+            items: Cow::Owned(Vec::new()),
+            vendor: Vendor::default().into(),
+        }
     }
 }
 
@@ -188,7 +238,11 @@ impl Item {
 
 impl fmt::Display for Item {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "UUID: {}\nName: {}\nDescription: {}\nPrice: {}\nPicture: {}\nVendor: {:?}", self.uuid, self.name, self.description, self.price, self.picture, self.vendor)
+        write!(
+            f,
+            "UUID: {}\nName: {}\nDescription: {}\nPrice: {}\nPicture: {}\nVendor: {:?}",
+            self.uuid, self.name, self.description, self.price, self.picture, self.vendor
+        )
     }
 }
 
@@ -240,6 +294,7 @@ pub enum Month {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum ReoccurancePattern {
+    None,
     OneTime,
     Daily,
     Weekly { days: Vec<Day>, spacing: u32 },
