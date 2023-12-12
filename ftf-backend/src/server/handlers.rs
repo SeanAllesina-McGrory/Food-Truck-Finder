@@ -33,22 +33,26 @@ pub async fn vendor_get(
                 return Json::default();
             }
         };
-        println!("{:?}", vendors_vec);
+        //println!("{:?}", vendors_vec);
         let vendors_vec: Vec<Vendor> = vendors_vec
             .iter()
             .map(|v| v.clone())
             .filter(|vendor| {
-                &vendor
+                println!("{:?}", vendor.events);
+                let es = &vendor
                     .events
                     .iter()
                     .map(|e| e.clone())
-                    .filter(|event| event.uuid == event_id)
-                    .collect::<Vec<Event>>()
-                    .len()
-                    .into()
-                    != 0
+                    .filter(|event| {
+                        println!("{}", event.uuid);
+                        return event.uuid == event_id;
+                    })
+                    .collect::<Vec<Event>>();
+                println!("{}", es);
+                es != 0
             })
             .collect::<Vec<Vendor>>();
+        println!("{:?}", vendors_vec);
         return Json(vendors_vec);
     } else if let Some(menu_id) = params.menu_id {
         todo!();

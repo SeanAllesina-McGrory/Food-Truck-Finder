@@ -117,7 +117,7 @@ impl Event {
 
 impl fmt::Display for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "UUID: {}\nName: {}\nDateTime: {}\nLocation: {}\nMenu: {:?}\nRepeats: {}\nEnds: {}\nVendor: {:?}", self.uuid, self.name, self.datetime, self.location, self.menu, self.repeat_schedule, self.repeat_end, self.vendor)
+        write!(f, "UUID: {}\nName: {}\nDateTime: {}\nLocation: {}\nMenu: {:?}\nRepeats: {}\nEnds: {}\nVendor: {}", self.uuid, self.name, self.datetime, self.location, self.menu, self.repeat_schedule, self.repeat_end, self.vendor.clone().unwrap_or(Vendor::default()).uuid)
     }
 }
 
