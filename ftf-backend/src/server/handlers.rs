@@ -59,7 +59,15 @@ pub async fn vendor_get(
     } else if let Some(item_id) = params.item_id {
         todo!();
     }
-    Json::default()
+    let vendor_vec_result: Result<Vec<Vendor>, surrealdb::Error> = state.db.select("vendors").await;
+    let vendor_vec = match vendor_vec_result {
+        Ok(vendor_vec) => vendor_vec,
+        Err(err) => {
+            println!("{:?}", err);
+            return Json::default();
+        }
+    };
+    Json(vendor_vec)
 }
 
 pub async fn vendor_add(
@@ -135,7 +143,15 @@ pub async fn event_get(
             .collect();
         return Json(events_vec);
     }
-    Json::default()
+    let event_vec_result: Result<Vec<Event>, surrealdb::Error> = state.db.select("events").await;
+    let event_vec = match event_vec_result {
+        Ok(event_vec) => event_vec,
+        Err(err) => {
+            println!("{:?}", err);
+            return Json::default();
+        }
+    };
+    Json(event_vec)
 }
 
 pub async fn event_add(
@@ -194,7 +210,15 @@ pub async fn menu_get(
     Query(params): Query<models::MenuGetParams>,
     State(state): State<state::AppState>,
 ) -> impl IntoResponse {
-    Json(format!("{}", String::from("Hello, Cruel World!")))
+    let menu_vec_result: Result<Vec<Menu>, surrealdb::Error> = state.db.select("menus").await;
+    let menu_vec = match menu_vec_result {
+        Ok(menu_vec) => menu_vec,
+        Err(err) => {
+            println!("{:?}", err);
+            return Json::default();
+        }
+    };
+    Json(menu_vec)
 }
 
 pub async fn menu_add(
@@ -247,7 +271,15 @@ pub async fn item_get(
     Query(params): Query<models::ItemGetParams>,
     State(state): State<state::AppState>,
 ) -> impl IntoResponse {
-    Json(format!("{}", String::from("Hello, Cruel World!")))
+    let item_vec_result: Result<Vec<Item>, surrealdb::Error> = state.db.select("items").await;
+    let item_vec = match item_vec_result {
+        Ok(item_vec) => item_vec,
+        Err(err) => {
+            println!("{:?}", err);
+            return Json::default();
+        }
+    };
+    Json(item_vec)
 }
 
 pub async fn item_add(

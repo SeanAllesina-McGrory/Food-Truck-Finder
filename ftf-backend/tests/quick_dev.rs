@@ -119,7 +119,6 @@ where
     Ok(vendors)
 }
 
-#[tokio::test]
 async fn repopulate_database() -> Result<()> {
     let params: argon2::Params = argon2::Params::new(16, 1, 1, 32.into()).unwrap();
     // Setup our connection to the database
@@ -274,6 +273,7 @@ async fn repopulate_database() -> Result<()> {
     Ok(())
 }
 
+#[tokio::test]
 async fn quick_dev() -> Result<()> {
     //repopulate_database().await?;
     let hc = httpc_test::new_client("http://localhost:8080")?;
