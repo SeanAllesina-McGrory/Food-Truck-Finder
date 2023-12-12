@@ -20,7 +20,11 @@ pub struct Vendor {
 impl Vendor {
     pub fn new(name: String, auth_token: String) -> Self {
         Vendor {
-            uuid: Cow::Owned(Uuid::new_v4().to_string().into()),
+            uuid: Cow::Owned(String::from(
+                Uuid::new_v4()
+                    .simple()
+                    .encode_upper(&mut uuid::Uuid::encode_buffer()),
+            )),
             name: name.into(),
             auth_token: auth_token.into(),
             description: String::from("").into(),
@@ -103,7 +107,11 @@ pub struct Event {
 impl Event {
     pub fn new(datetime: String, location: String, vendor: Vendor) -> Self {
         Event {
-            uuid: Cow::Owned(Uuid::new_v4().to_string().into()),
+            uuid: Cow::Owned(String::from(
+                Uuid::new_v4()
+                    .simple()
+                    .encode_upper(&mut uuid::Uuid::encode_buffer()),
+            )),
             name: "".into(),
             datetime: datetime.clone().into(),
             location: location.into(),
@@ -167,7 +175,11 @@ pub struct Menu {
 impl Menu {
     pub fn new(name: String, vendor: Vendor) -> Self {
         Menu {
-            uuid: Cow::Owned(Uuid::new_v4().to_string().into()),
+            uuid: Cow::Owned(String::from(
+                Uuid::new_v4()
+                    .simple()
+                    .encode_upper(&mut uuid::Uuid::encode_buffer()),
+            )),
             name: name.into(),
             items: Cow::Owned(Vec::new()),
             vendor: vendor.into(),
@@ -226,7 +238,11 @@ pub struct Item {
 impl Item {
     pub fn new(name: String, vendor: Vendor) -> Self {
         Item {
-            uuid: Cow::Owned(Uuid::new_v4().to_string().into()),
+            uuid: Cow::Owned(String::from(
+                Uuid::new_v4()
+                    .simple()
+                    .encode_upper(&mut uuid::Uuid::encode_buffer()),
+            )),
             name: name.into(),
             description: "".into(),
             price: "".into(),

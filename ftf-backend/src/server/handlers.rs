@@ -48,8 +48,8 @@ pub async fn vendor_get(
                         return event.uuid == event_id;
                     })
                     .collect::<Vec<Event>>();
-                println!("{}", es);
-                es != 0
+                println!("{:?}", es);
+                es.len() != 0
             })
             .collect::<Vec<Vendor>>();
         println!("{:?}", vendors_vec);
