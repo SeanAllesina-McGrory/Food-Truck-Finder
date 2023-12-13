@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt;
+use surrealdb::sql::Thing;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -13,8 +14,8 @@ pub struct Vendor {
     pub email: Cow<'static, str>,
     pub phone_number: Cow<'static, str>,
     pub website: Cow<'static, str>,
-    pub events: Vec<Event>,
-    pub menus: Vec<Item>,
+    pub events: Vec<Thing>,
+    pub menus: Vec<Thing>,
 }
 
 impl Vendor {
@@ -167,7 +168,7 @@ pub struct EventRemoveParams {
 pub struct Menu {
     pub uuid: Cow<'static, str>,
     pub name: Cow<'static, str>,
-    pub items: Cow<'static, Vec<Item>>,
+    pub items: Vec<Thing>,
     pub vendor: Cow<'static, Vendor>, // FIX: Vendor is a Cow is some instances and a vendor in
                                       // others, Choose one
 }
@@ -181,7 +182,7 @@ impl Menu {
                     .encode_upper(&mut uuid::Uuid::encode_buffer()),
             )),
             name: name.into(),
-            items: Cow::Owned(Vec::new()),
+            items: Vec::new(),
             vendor: vendor.into(),
         }
     }
@@ -202,7 +203,7 @@ impl Default for Menu {
         Menu {
             uuid: "".into(),
             name: "".into(),
-            items: Cow::Owned(Vec::new()),
+            items: Vec::new(),
             vendor: Vendor::default().into(),
         }
     }

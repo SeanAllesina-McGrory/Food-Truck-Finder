@@ -5,7 +5,15 @@ use axum::extract::{Query, State};
 use axum::response::Html;
 use axum::response::IntoResponse;
 use axum::Json;
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use surrealdb::sql::Thing;
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Record {
+    #[allow(dead_code)]
+    id: Thing,
+}
 
 pub async fn vendor_get(
     Query(params): Query<models::VendorGetParams>,
@@ -44,10 +52,10 @@ pub async fn vendor_get(
                     .iter()
                     .map(|e| e.clone())
                     .filter(|event| {
-                        println!("{}", event.uuid);
-                        return event.uuid == event_id;
+                        return event.id.to_string() == event_id;
                     })
-                    .collect::<Vec<Event>>();
+                    .map(|event_thing| event_thing.id.to_string())
+                    .collect::<Vec<String>>();
                 println!("{:?}", es);
                 es.len() != 0
             })
