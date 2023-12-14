@@ -4,6 +4,8 @@ use std::fmt;
 use surrealdb::sql::Thing;
 use uuid::Uuid;
 
+// TODO: Create multiple dispatch constructors for structs here
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Vendor {
     pub uuid: Cow<'static, str>,
@@ -99,14 +101,14 @@ pub struct Event {
     pub name: Cow<'static, str>,
     pub datetime: Cow<'static, str>,
     pub location: Cow<'static, str>,
-    pub menu: Option<Menu>,
+    pub menu: Option<Thing>,
     pub repeat_schedule: Cow<'static, ReoccurancePattern>,
     pub repeat_end: Cow<'static, str>,
-    pub vendor: Option<Vendor>,
+    pub vendor: Option<Thing>,
 }
 
 impl Event {
-    pub fn new(datetime: String, location: String, vendor: Vendor) -> Self {
+    pub fn new(datetime: String, location: String, vendor: Option<Thing>) -> Self {
         Event {
             uuid: Cow::Owned(String::from(
                 Uuid::new_v4()
@@ -126,7 +128,10 @@ impl Event {
 
 impl fmt::Display for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "UUID: {}\nName: {}\nDateTime: {}\nLocation: {}\nMenu: {:?}\nRepeats: {}\nEnds: {}\nVendor: {}", self.uuid, self.name, self.datetime, self.location, self.menu, self.repeat_schedule, self.repeat_end, self.vendor.clone().unwrap_or(Vendor::default()).uuid)
+        write!(f, "UUID: {}\nName: {}\nDateTime: {}\nLocation: {}\nMenu: {:?}\nRepeats: {}\nEnds: {}\nVendor: {}", self.uuid, self.name, self.datetime, self.location, self.menu, self.repeat_schedule, self.repeat_end, match &self.vendor {
+        Some(thing) => thing.id.to_string(),
+        None => "".into(),
+        })
     }
 }
 
@@ -145,6 +150,7 @@ impl Default for Event {
     }
 }
 
+// TODO: Add menu_id based get
 #[derive(Debug, Deserialize, Serialize)]
 pub struct EventGetParams {
     pub event_id: Option<String>,
@@ -169,12 +175,11 @@ pub struct Menu {
     pub uuid: Cow<'static, str>,
     pub name: Cow<'static, str>,
     pub items: Vec<Thing>,
-    pub vendor: Cow<'static, Vendor>, // FIX: Vendor is a Cow is some instances and a vendor in
-                                      // others, Choose one
+    pub vendor: Option<Thing>,
 }
 
 impl Menu {
-    pub fn new(name: String, vendor: Vendor) -> Self {
+    pub fn new(name: String, vendor: Option<Thing>) -> Self {
         Menu {
             uuid: Cow::Owned(String::from(
                 Uuid::new_v4()
@@ -193,7 +198,13 @@ impl fmt::Display for Menu {
         write!(
             f,
             "UUID: {}\nName: {}\nItems: {:?}\nVendor: {}",
-            self.uuid, self.name, self.items, self.vendor
+            self.uuid,
+            self.name,
+            self.items,
+            match &self.vendor {
+                Some(thing) => thing.id.to_string(),
+                None => "".into(),
+            },
         )
     }
 }
@@ -204,14 +215,16 @@ impl Default for Menu {
             uuid: "".into(),
             name: "".into(),
             items: Vec::new(),
-            vendor: Vendor::default().into(),
+            vendor: None,
         }
     }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct MenuGetParams {
-    pub menu_id: String,
+    pub menu_id: Option<String>,
+    pub vendor_id: Option<String>,
+    pub event_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -233,11 +246,11 @@ pub struct Item {
     pub description: Cow<'static, str>,
     pub price: Cow<'static, str>,
     pub picture: Cow<'static, str>,
-    pub vendor: Vendor,
+    pub vendor: Option<Thing>,
 }
 
 impl Item {
-    pub fn new(name: String, vendor: Vendor) -> Self {
+    pub fn new(name: String, vendor: Option<Thing>) -> Self {
         Item {
             uuid: Cow::Owned(String::from(
                 Uuid::new_v4()
@@ -263,9 +276,23 @@ impl fmt::Display for Item {
     }
 }
 
+impl Default for Item {
+    fn default() -> Self {
+        Item {
+            uuid: "".into(),
+            name: "".into(),
+            description: "".into(),
+            price: "".into(),
+            picture: "".into(),
+            vendor: None,
+        }
+    }
+}
 #[derive(Debug, Deserialize)]
 pub struct ItemGetParams {
-    pub item_id: String,
+    pub item_id: Option<String>,
+    pub vendor_id: Option<String>,
+    pub menu_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
