@@ -10,6 +10,7 @@ use argon2::{
     Argon2,
 };
 use chrono::prelude::*;
+use colored::Colorize;
 use csv::{ReaderBuilder, StringRecord};
 use encoding_rs::WINDOWS_1252;
 use encoding_rs_io::DecodeReaderBytesBuilder;
@@ -17,8 +18,9 @@ use geoutils::Location;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::{fs::File, io::Read};
-use surrealdb::engine::remote::ws::Client;
-use surrealdb::Surreal;
+use surrealdb::{engine::remote::ws::Client, sql::Thing};
+use surrealdb::{sql::Id, Surreal};
+use tokio::sync::futures;
 
 #[derive(Debug, Deserialize)]
 struct VendorRecord {
@@ -104,7 +106,7 @@ where
         .encoding(Some(WINDOWS_1252))
         .build(file);
     let mut rdr = csv::ReaderBuilder::new()
-        .delimiter(b',')
+        .delimiter(b'|')
         .from_reader(transcoded);
 
     let vendors: Vec<_> = rdr
@@ -162,14 +164,6 @@ async fn repopulate_database() -> Result<()> {
             .unwrap();
     }
 
-    let vendors: Vec<Vendor> = db.select("vendors").await?;
-
-    /*vendors.iter().for_each(|vendor| {
-        println!("{}\n", vendor);
-    });*/
-
-    let mut vendors = vendors.into_iter();
-
     let _: Vec<Event> = db.delete("events").await?;
 
     let event_records = read_csv("./events.csv".into(), |e| EventRecord::new(e)).unwrap();
@@ -180,13 +174,15 @@ async fn repopulate_database() -> Result<()> {
             let mut event: Event = Event::new(
                 event_record.datetime.clone(),
                 event_record.location.clone(),
-                vendors.next().unwrap(),
+                None,
             );
             event.repeat_end = Cow::Owned(event_record.end_date.clone());
             event.name = Cow::Owned(event_record.name.clone());
             event
         })
         .collect();
+
+    println!("Hello");
 
     for event in events_vec {
         let _: Event = db
@@ -197,50 +193,7 @@ async fn repopulate_database() -> Result<()> {
             .unwrap();
     }
 
-    let events: Vec<Event> = db.select("events").await?;
-
-    vendors = db.select("vendors").await?.into_iter();
-
-    /*events.iter().for_each(|event| {
-        println!("{:?}\n", event);
-    });*/
-
-    let _: Vec<Menu> = db.delete("menus").await?;
-
-    let menu_records = read_csv("./menus.csv".into(), |m| MenuRecord::new(m)).unwrap();
-
-    let menus_vec: Vec<Menu> = menu_records
-        .iter()
-        .map(|menu_record| {
-            let mut menu: Menu = Menu::new(
-                format!(
-                    "{}:{}:{}",
-                    menu_record.item1.clone(),
-                    menu_record.item2.clone(),
-                    menu_record.item3.clone()
-                ),
-                vendors.next().unwrap(),
-            );
-            menu
-        })
-        .collect();
-
-    for menu in menus_vec {
-        let _: Menu = db
-            .create(("menus", menu.uuid.to_string()))
-            .content(menu)
-            .await
-            .unwrap()
-            .unwrap();
-    }
-
-    let menus: Vec<Menu> = db.select("menus").await?;
-
-    vendors = db.select("vendors").await?.into_iter();
-
-    /*menus.iter().for_each(|menu| {
-        println!("{:?}\n", menu);
-    });*/
+    println!("Hello");
 
     let _: Vec<Item> = db.delete("items").await?;
 
@@ -249,7 +202,7 @@ async fn repopulate_database() -> Result<()> {
     let items_vec: Vec<Item> = item_records
         .iter()
         .map(|item_record| {
-            let mut item: Item = Item::new(item_record.name.clone(), vendors.next().unwrap());
+            let mut item: Item = Item::new(item_record.name.clone(), None);
             item.description = Cow::Owned(item_record.description.clone());
             item
         })
@@ -264,18 +217,79 @@ async fn repopulate_database() -> Result<()> {
             .unwrap();
     }
 
-    let items: Vec<Item> = db.select("items").await?;
+    let item_vec: Vec<Item> = db.select("items").await?;
 
-    /*items.iter().for_each(|item| {
-        println!("{:?}Test\n", item);
-    });*/
+    let _: Vec<Menu> = db.delete("menus").await?;
+
+    let menu_records = read_csv("./menus.csv".into(), |m| MenuRecord::new(m)).unwrap();
+
+    let items_list: Vec<Item> = db.select("items").await.unwrap();
+    let menus_vec: Vec<Menu> = menu_records
+        .iter()
+        .map(|menu_record| {
+            let mut menu: Menu = Menu::new(
+                format!(
+                    "{}:{}:{}",
+                    menu_record.item1.clone(),
+                    menu_record.item2.clone(),
+                    menu_record.item3.clone()
+                ),
+                None,
+            );
+            let things_list: Vec<Thing> = items_list
+                .clone()
+                .iter()
+                .map(|item| item.clone())
+                .filter(|item| {
+                    menu_record.item1 == item.name
+                        || menu_record.item2 == item.name
+                        || menu_record.item3 == item.name
+                })
+                .map(|item| Thing {
+                    tb: "items".into(),
+                    id: Id::String(item.uuid.into()),
+                })
+                .collect();
+            menu.items = things_list;
+            menu
+        })
+        .collect();
+
+    for menu in menus_vec {
+        let _: Menu = db
+            .create(("menus", menu.uuid.to_string()))
+            .content(menu)
+            .await
+            .unwrap()
+            .unwrap();
+    }
+
+    /*
+     *
+    let sql = r#"
+            FOR $vendor IN (SELECT VALUE id FROM vendors) {
+                UPDATE $vendor SET events = (SELECT VALUE id FROM events ORDER BY rand() LIMIT 3);
+                UPDATE $vendor SET menus = (SELECT VALUE id FROM menus ORDER BY rand() LIMIT 2);
+                FOR $menu IN (SELECT VALUE id FROM $vendor.menus) {
+                    FOR $item IN (SELECT VALUE id FROM $menu.items) {
+                        UPDATE $item SET vendor = $vendor;
+                    };
+                    UPDATE $menu SET vendor = $vendor;
+                };
+                FOR $event IN (SELECT VALUE id FROM $vendor.events) {
+                    UPDATE $event SET vendor = $vendor;
+                    UPDATE $event SET menu = (SELECT VALUE id FROM $vendor.menus ORDER BY rand() LIMIT 1);
+                };
+            };
+        "#;
+
+    let mut res = db.query(sql).await?;
+    */
 
     Ok(())
 }
 
-#[tokio::test]
 async fn quick_dev() -> Result<()> {
-    //repopulate_database().await?;
     let hc = httpc_test::new_client("http://localhost:8080")?;
 
     hc.do_get("/vendor/get?vendor_id=n2cfynuwl9s5y9967xnk")
@@ -344,15 +358,47 @@ async fn quick_dev() -> Result<()> {
     Ok(())
 }
 
+async fn check_route(route: &str) -> Result<()> {
+    let hc = httpc_test::new_client("http://localhost:8080")?;
+    let resp = hc.do_get(route.into()).await?.json_body();
+    assert!(resp.is_ok());
+    assert!(resp.unwrap().to_string().len() > 2);
+    Ok(())
+}
+
 #[tokio::test]
 async fn handlers_test() -> Result<()> {
-    let hc = httpc_test::new_client("http://localhost:8080")?;
-
     // Vendors
-    hc.do_get("/vendor/get").await?.print().await;
-    hc.do_get("/vendor/get?vendor_id=").await?.print().await;
-    hc.do_get("/vendor/get?event_id=").await?.print().await;
-    hc.do_get("/vendor/get?menu_id=").await?.print().await;
-    hc.do_get("/vendor/get?item_id=").await?.print().await;
+    let routes = vec![
+        "/vendor/get",
+        "/vendor/get?vendor_id=8F1C8C46AA9346C38048B794B9E5DDCA",
+        "/vendor/get?event_id=087F5EBAEFE94796B47C1001AFB1C95E",
+        "/vendor/get?menu_id=81059E4DA8A647A087AEE3B973C42815",
+        "/vendor/get?item_id=3D22AD60C2E24374907D08B2A3CE8043",
+        "/event/get",
+        "/event/get?event_id=517FF0324B7846D291CEAAF4B2288B53",
+        "/event/get?vendor_id=477C686ACAB3402AB7D50554D3C6A8FF",
+        "/menu/get",
+        "/menu/get?menu_id=28ACC2C6BB264F409EAF59C87D2EA3AC",
+        "/menu/get?vendor_id=C67785E27B9843468E8DCC5175620340",
+        "/menu/get?event_id=88A8D9E031A04793A69B2107254979E0",
+        "/item/get",
+        "/item/get?item_id=895D606D7B3A4B7886AE91EF6BE49A85",
+        "/item/get?vendor_id=C67785E27B9843468E8DCC5175620340",
+        "/item/get?menu_id=7C492130851C405DB395A2B896822A09",
+    ];
+
+    for route in routes {
+        let result = check_route(route).await;
+        match result {
+            Ok(()) => println!("->> {:<60} - {}", route, "PASSED".green().underline()),
+            Err(err) => println!(
+                "->> {:<60} - {} - {:?}",
+                route,
+                "FAILED".red().underline(),
+                err
+            ),
+        };
+    }
     Ok(())
 }
