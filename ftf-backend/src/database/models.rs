@@ -53,6 +53,58 @@ impl Into<Cow<'static, Vendor>> for Vendor {
     }
 }
 
+impl From<serde_json::Value> for Vendor {
+    fn from(value: serde_json::Value) -> Self {
+        let name = match value.get("name") {
+            Some(name) => match name.as_str() {
+                Some(name) => name.to_owned(),
+                None => return Vendor::default(),
+            },
+            None => return Vendor::default(),
+        };
+        let auth_token = match value.get("auth_token") {
+            Some(auth_token) => match auth_token.as_str() {
+                Some(auth_token) => auth_token.to_owned(),
+                None => return Vendor::default(),
+            },
+            None => return Vendor::default(),
+        };
+
+        let mut vendor = Vendor::new(name.to_string(), auth_token.to_string());
+        if let Some(description) = value.get("description") {
+            match description.as_str() {
+                Some(description) => vendor.description = description.to_owned().into(),
+                None => (),
+            };
+        }
+        if let Some(vendor_type) = value.get("vendor_type") {
+            match vendor_type.as_str() {
+                Some(vendor_type) => vendor.vendor_type = vendor_type.to_owned().into(),
+                None => (),
+            };
+        }
+        if let Some(email) = value.get("email") {
+            match email.as_str() {
+                Some(email) => vendor.email = email.to_owned().into(),
+                None => (),
+            };
+        }
+        if let Some(phone_number) = value.get("phone_number") {
+            match phone_number.as_str() {
+                Some(phone_number) => vendor.phone_number = phone_number.to_owned().into(),
+                None => (),
+            };
+        }
+        if let Some(website) = value.get("website") {
+            match website.as_str() {
+                Some(website) => vendor.website = website.to_owned().into(),
+                None => (),
+            };
+        }
+        vendor
+    }
+}
+
 impl Default for Vendor {
     fn default() -> Self {
         Vendor {
@@ -76,23 +128,6 @@ pub struct VendorGetParams {
     pub event_id: Option<String>,
     pub menu_id: Option<String>,
     pub item_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct VendorAddParams {
-    pub name: String,
-    pub auth_token: String,
-    pub description: Option<String>,
-    pub vendor_type: Option<String>,
-    pub email: Option<String>,
-    pub phone_number: Option<String>,
-    pub website: Option<String>,
-    pub photo: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct VendorRemoveParams {
-    pub vendor_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

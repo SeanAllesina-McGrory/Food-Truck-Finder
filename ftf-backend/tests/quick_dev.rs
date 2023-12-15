@@ -16,7 +16,7 @@ use encoding_rs::WINDOWS_1252;
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use geoutils::Location;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 use std::{fs::File, io::Read};
 use surrealdb::{engine::remote::ws::Client, sql::Thing};
 use surrealdb::{sql::Id, Surreal};
@@ -400,5 +400,46 @@ async fn handlers_test() -> Result<()> {
             ),
         };
     }
+
+    let params: argon2::Params = argon2::Params::new(16, 1, 1, 32.into()).unwrap();
+    let salt = SaltString::generate(&mut OsRng);
+
+    let argon2 = Argon2::new(
+        argon2::Algorithm::Argon2id,
+        argon2::Version::V0x13,
+        params.clone(),
+    );
+
+    let password_hash = argon2
+        .hash_password("Ramen Ichiraku".as_bytes(), &salt)
+        .unwrap()
+        .to_string();
+
+    let mut map = HashMap::new();
+    map.insert("name", "Ramen Ichiraku");
+    map.insert("auth_token", &password_hash);
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post("http://localhost:8080/vendor/add")
+        .json(&map)
+        .send()
+        .await?;
+
+    let vendor_record = res.json::<server::handlers::Record>().await?;
+
+    let vendor_id = vendor_record.id.id.to_string();
+
+    let mut map = HashMap::new();
+    map.insert("vendor_id", vendor_id);
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post("http://localhost:8080/vendor/remove")
+        .json(&map)
+        .send()
+        .await?;
+
+    println!("{:?}", res);
     Ok(())
 }

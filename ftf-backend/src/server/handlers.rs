@@ -1,17 +1,28 @@
 use crate::database::models;
 use crate::database::models::{Event, Item, Menu, Vendor};
 use crate::server::state;
-use axum::extract::{Query, State};
-use axum::response::Html;
+use axum::extract::{Json as ExtractJson, Query, State};
 use axum::response::IntoResponse;
-use axum::Json;
+use axum::response::{Html, Json};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use surrealdb::sql::Thing;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Record {
+pub struct Record {
     #[allow(dead_code)]
-    id: Thing,
+    pub id: Thing,
+}
+
+impl Default for Record {
+    fn default() -> Self {
+        Record {
+            id: Thing {
+                tb: "".into(),
+                id: "".into(),
+            },
+        }
+    }
 }
 
 // TODO: Bug test
@@ -139,46 +150,67 @@ pub async fn vendor_get(
     Json(vendor_vec)
 }
 
-// FIX: Recode to align with Thing based db linking and JSON returns
+// TODO: Bug test
 pub async fn vendor_add(
-    Query(params): Query<models::VendorAddParams>,
     State(state): State<state::AppState>,
+    Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("->> {:<12} - handler vendor_add - {params:?}", "HANDLER");
+    println!("->> {:<12} - handler vendor_add - {json:?}", "HANDLER");
 
-    let db = state.db;
+    let record_json = Vendor::from(json);
 
-    let vendor: Vec<Vendor> = match db
-        .create("vendor")
-        .content(Vendor::new(params.name, params.auth_token))
-        .await
-    {
-        Ok(res) => res,
-        Err(err) => return Html(format!("{:?}", err)),
+    let record_option_result: Result<Option<Record>, surrealdb::Error> = state
+        .db
+        .create(("vendors", record_json.uuid.to_string()))
+        .content(record_json)
+        .await;
+    let record_option = match record_option_result {
+        Ok(record_option) => record_option,
+        Err(err) => {
+            println!("Failed to add vendor to database: {err:?}");
+            return Json::default();
+        }
+    };
+    let record = match record_option {
+        Some(record) => record,
+        None => return Json::default(),
     };
 
-    Html(format!("{:?}", vendor))
+    Json(record)
 }
 
-// FIX: Recode to align with Thing based db linking and JSON returns
+// WARNING: There is essentially no situation where you should need to use this with any amount of
+// regularity. Keeping here to maintain parity between tables, but should be removed before pro
+// TODO: Bug test
 pub async fn vendor_remove(
-    Query(params): Query<models::VendorRemoveParams>,
     State(state): State<state::AppState>,
+    Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("->> {:<12} - handler vendor_remove - {params:?}", "HANDLER");
+    println!("->> {:<12} - handler vendor_remove - {json:?}", "HANDLER");
 
-    let db = state.db;
-    let vendor_id = params.vendor_id;
-
-    let vendor: Vec<Vendor> = match db.delete(("vendor", vendor_id.clone())).await {
-        Ok(vendor_option) => match vendor_option {
-            Some(vendor) => vendor,
-            None => return Html(format!("[]")),
-        },
-        Err(err) => return Html(format!("{:?}", err)),
+    let vendor_id_option: Option<&Value> = json.get("vendor_id");
+    let vendor_id = match vendor_id_option {
+        Some(vendor_id) => vendor_id,
+        None => return Json::default(),
     };
 
-    Html(format!("{:?}", vendor))
+    let db_resp = state
+        .db
+        .delete(("vendors", vendor_id.as_str().unwrap()))
+        .await;
+    let vendor: Vendor = match db_resp {
+        Ok(vendor_option) => match vendor_option {
+            Some(vendor) => vendor,
+            None => {
+                return Json::default();
+            }
+        },
+        Err(err) => {
+            println!("Failed in result match: Line 209\n{err:?}");
+            return Json::default();
+        }
+    };
+    Json(vendor)
 }
 
 // TODO: Bug test
@@ -421,6 +453,7 @@ pub async fn menu_remove(
     Html(format!("{:?}", menu))
 }
 
+// TODO: Bug test
 pub async fn item_get(
     Query(params): Query<models::ItemGetParams>,
     State(state): State<state::AppState>,
