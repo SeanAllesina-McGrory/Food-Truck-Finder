@@ -23,4 +23,4 @@ encoding_rs = "0.8.33"
 encoding_rs_io = "0.1.7"
 argon2 = "0.5.2"
 colored = "2.1.0"
-reqwest = "0.11.22"
+reqwest = { version = "0.11.22", features = [ "json", "blocking" ] }
