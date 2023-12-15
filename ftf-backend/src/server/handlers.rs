@@ -263,56 +263,22 @@ pub async fn event_get(
 
 // FIX: Recode to align with Thing based db linking and JSON returns
 pub async fn event_add(
-    Query(params): Query<models::EventAddParams>,
     State(state): State<state::AppState>,
+    Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("->> {:<12} - handler event_add - {params:?}", "HANDLER");
+    println!("->> {:<12} - handler event_add - {json:?}", "HANDLER");
 
-    let db = state.db;
-
-    let vendor = match db.select(("vendor", params.vendor_id)).await {
-        Ok(option_vendor) => match option_vendor {
-            Some(vendor) => vendor,
-            None => return Html(format!("Vendor not found")),
-        },
-        Err(err) => return Html(format!("{:?}", err)),
-    };
-
-    let datetime = params.datetime;
-    let location = params.location;
-    let repetition = params.repetition;
-
-    let event: Vec<Event> = match db
-        .create("event")
-        .content(Event::new(
-            String::from("Now"),
-            String::from("There"),
-            vendor,
-        ))
-        .await
-    {
-        Ok(event) => event,
-        Err(err) => return Html(format!("{:?}", err)),
-    };
-    Html(format!("{:?}", event))
+    Json("Hello, Cruel World!")
 }
 
 // FIX: Recode to align with Thing based db linking and JSON returns
 pub async fn event_remove(
-    Query(params): Query<models::EventRemoveParams>,
     State(state): State<state::AppState>,
+    Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("->> {:<12} - handler event_remove - {params:?}", "HANDLER");
-    let db = state.db;
-    let event_id = params.event_id;
-    let event: Vec<Event> = match db.delete(("vendor", event_id.clone())).await {
-        Ok(event_option) => match event_option {
-            Some(event) => event,
-            None => return Html(format!("[]")),
-        },
-        Err(err) => return Html(format!("{:?}", err)),
-    };
-    Html(format!("{:?}", event))
+    println!("->> {:<12} - handler event_remove - {json:?}", "HANDLER");
+
+    Json("Hello, Cruel World!")
 }
 
 // TODO: Bug test
@@ -407,50 +373,22 @@ pub async fn menu_get(
 
 // FIX: Recode to align with Thing based db linking and JSON returns
 pub async fn menu_add(
-    Query(params): Query<models::MenuAddParams>,
     State(state): State<state::AppState>,
+    Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("->> {:<12} - handler menu_add - {params:?}", "HANDLER");
+    println!("->> {:<12} - handler menu_add - {json:?}", "HANDLER");
 
-    let db = state.db;
-
-    let vendor = match db.select(("vendor", params.vendor_id)).await {
-        Ok(option_vendor) => match option_vendor {
-            Some(vendor) => vendor,
-            None => return Html(format!("Vendor not found")),
-        },
-        Err(err) => return Html(format!("{:?}", err)),
-    };
-
-    let name = params.name;
-    let items: String = params.items.unwrap_or(String::from("")).into();
-
-    let menu: Vec<Menu> = match db.create("menu").content(Menu::new(name, vendor)).await {
-        Ok(event) => event,
-        Err(err) => return Html(format!("{:?}", err)),
-    };
-    Html(format!("{:?}", menu))
+    Json("Hello, Cruel World!")
 }
 
 // FIX: Recode to align with Thing based db linking and JSON returns
 pub async fn menu_remove(
-    Query(params): Query<models::MenuRemoveParams>,
     State(state): State<state::AppState>,
+    Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("->> {:<12} - handler menu_remove - {params:?}", "HANDLER");
+    println!("->> {:<12} - handler menu_remove - {json:?}", "HANDLER");
 
-    let db = state.db;
-    let menu_id = params.menu_id;
-
-    let menu: Vec<Menu> = match db.delete(("menu", menu_id)).await {
-        Ok(menu_option) => match menu_option {
-            Some(menu) => menu,
-            None => return Html(format!("[]")),
-        },
-        Err(err) => return Html(format!("{:?}", err)),
-    };
-
-    Html(format!("{:?}", menu))
+    Json("Hello, Cruel World!")
 }
 
 // TODO: Bug test
@@ -543,64 +481,20 @@ pub async fn item_get(
 
 // FIX: Recode to align with Thing based db linking and JSON returns
 pub async fn item_add(
-    Query(params): Query<models::ItemAddParams>,
     State(state): State<state::AppState>,
+    Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("->> {:<12} - handler item_add - {params:?}", "HANDLER");
+    println!("->> {:<12} - handler item_add - {json:?}", "HANDLER");
 
-    let db = state.db;
-
-    let vendor = match db.select(("vendor", params.vendor_id)).await {
-        Ok(option_vendor) => match option_vendor {
-            Some(vendor) => vendor,
-            None => return Html(format!("Vendor not found")),
-        },
-        Err(err) => return Html(format!("{:?}", err)),
-    };
-
-    let name = params.name;
-    let description: String = match params.description {
-        Some(string) => string,
-        None => String::from(""),
-    }
-    .into();
-    let price: String = match params.price {
-        Some(string) => string,
-        None => String::from(""),
-    }
-    .into();
-    let picture: String = match params.picture {
-        Some(string) => string,
-        None => String::from(""),
-    }
-    .into();
-
-    let item: Vec<Item> = match db.create("item").content(Item::new(name, vendor)).await {
-        Ok(item) => item,
-        Err(err) => return Html(format!("{:?}", err)),
-    };
-
-    Html(format!("{:?}", item))
+    Json("Hello, Cruel World!")
 }
 
 // FIX: Recode to align with Thing based db linking and JSON returns
 pub async fn item_remove(
-    Query(params): Query<models::ItemRemoveParams>,
     State(state): State<state::AppState>,
+    Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("->> {:<12} - handler item_remove - {params:?}", "HANDLER");
+    println!("->> {:<12} - handler item_remove - {json:?}", "HANDLER");
 
-    let db = state.db;
-
-    let item_id = params.item_id;
-
-    let item: Vec<Item> = match db.delete(("item", item_id)).await {
-        Ok(item_option) => match item_option {
-            Some(item) => item,
-            None => return Html(format!("[]")),
-        },
-        Err(err) => return Html(format!("{:?}", err)),
-    };
-
-    Html(format!("{:?}", item))
+    Json("Hello, Cruel World!")
 }

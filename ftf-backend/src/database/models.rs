@@ -192,19 +192,6 @@ pub struct EventGetParams {
     pub vendor_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct EventAddParams {
-    pub datetime: String,
-    pub location: String,
-    pub repetition: String,
-    pub vendor_id: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct EventRemoveParams {
-    pub event_id: String,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Menu {
     pub uuid: Cow<'static, str>,
@@ -262,18 +249,6 @@ pub struct MenuGetParams {
     pub event_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct MenuAddParams {
-    pub name: String,
-    pub items: Option<String>,
-    pub vendor_id: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct MenuRemoveParams {
-    pub menu_id: String,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Item {
     pub uuid: Cow<'static, str>,
@@ -328,20 +303,6 @@ pub struct ItemGetParams {
     pub item_id: Option<String>,
     pub vendor_id: Option<String>,
     pub menu_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ItemAddParams {
-    pub name: String,
-    pub description: Option<String>,
-    pub price: Option<String>,
-    pub picture: Option<String>,
-    pub vendor_id: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ItemRemoveParams {
-    pub item_id: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
