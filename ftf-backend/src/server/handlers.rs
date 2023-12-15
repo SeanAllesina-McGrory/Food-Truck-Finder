@@ -190,14 +190,14 @@ pub async fn vendor_remove(
 
     let vendor_id_option: Option<&Value> = json.get("vendor_id");
     let vendor_id = match vendor_id_option {
-        Some(vendor_id) => vendor_id,
+        Some(vendor_id) => match vendor_id.as_str() {
+            Some(vendor_id) => vendor_id,
+            None => return Json::default(),
+        },
         None => return Json::default(),
     };
 
-    let db_resp = state
-        .db
-        .delete(("vendors", vendor_id.as_str().unwrap()))
-        .await;
+    let db_resp = state.db.delete(("vendors", vendor_id)).await;
     let vendor: Vendor = match db_resp {
         Ok(vendor_option) => match vendor_option {
             Some(vendor) => vendor,
@@ -261,24 +261,67 @@ pub async fn event_get(
     Json(event_vec)
 }
 
-// FIX: Recode to align with Thing based db linking and JSON returns
+// TODO: Bug test
 pub async fn event_add(
     State(state): State<state::AppState>,
     Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
     println!("->> {:<12} - handler event_add - {json:?}", "HANDLER");
 
-    Json("Hello, Cruel World!")
+    let record_json = Event::from(json);
+
+    let record_option_result: Result<Option<Record>, surrealdb::Error> = state
+        .db
+        .create(("events", record_json.uuid.to_string()))
+        .content(record_json)
+        .await;
+
+    let record_option = match record_option_result {
+        Ok(record_option) => record_option,
+        Err(err) => {
+            println!("Failed to add event to database: {err:?}");
+            return Json::default();
+        }
+    };
+
+    let record = match record_option {
+        Some(record) => record,
+        None => return Json::default(),
+    };
+
+    Json(record)
 }
 
-// FIX: Recode to align with Thing based db linking and JSON returns
+// TODO: Bug test
 pub async fn event_remove(
     State(state): State<state::AppState>,
     Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
     println!("->> {:<12} - handler event_remove - {json:?}", "HANDLER");
 
-    Json("Hello, Cruel World!")
+    let event_id_option: Option<&Value> = json.get("event_id");
+    let event_id = match event_id_option {
+        Some(event_id) => match event_id.as_str() {
+            Some(event_id) => event_id,
+            None => return Json::default(),
+        },
+        None => return Json::default(),
+    };
+
+    let db_resp = state.db.delete(("events", event_id)).await;
+
+    let event: Event = match db_resp {
+        Ok(event_option) => match event_option {
+            Some(event) => event,
+            None => return Json::default(),
+        },
+        Err(err) => {
+            println!("Failed to delete event: {err:?}");
+            return Json::default();
+        }
+    };
+
+    Json(event)
 }
 
 // TODO: Bug test
@@ -371,7 +414,7 @@ pub async fn menu_get(
     Json(menu_vec)
 }
 
-// FIX: Recode to align with Thing based db linking and JSON returns
+// TODO: Bug test
 pub async fn menu_add(
     State(state): State<state::AppState>,
     Json(json): ExtractJson<serde_json::Value>,
@@ -381,7 +424,7 @@ pub async fn menu_add(
     Json("Hello, Cruel World!")
 }
 
-// FIX: Recode to align with Thing based db linking and JSON returns
+// TODO: Bug test
 pub async fn menu_remove(
     State(state): State<state::AppState>,
     Json(json): ExtractJson<serde_json::Value>,
@@ -479,22 +522,65 @@ pub async fn item_get(
     Json(item_vec)
 }
 
-// FIX: Recode to align with Thing based db linking and JSON returns
+// TODO: Bug test
 pub async fn item_add(
     State(state): State<state::AppState>,
     Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
     println!("->> {:<12} - handler item_add - {json:?}", "HANDLER");
 
-    Json("Hello, Cruel World!")
+    let item = Item::from(json);
+
+    let record_option_result: Result<Option<Record>, surrealdb::Error> = state
+        .db
+        .create(("items", item.uuid.to_string()))
+        .content(item)
+        .await;
+
+    let record_option = match record_option_result {
+        Ok(record_option) => record_option,
+        Err(err) => {
+            println!("Failed to add item to database: {err:?}");
+            return Json::default();
+        }
+    };
+
+    let record = match record_option {
+        Some(record) => record,
+        None => return Json::default(),
+    };
+
+    Json(record)
 }
 
-// FIX: Recode to align with Thing based db linking and JSON returns
+// TODO: Bug test
 pub async fn item_remove(
     State(state): State<state::AppState>,
     Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
     println!("->> {:<12} - handler item_remove - {json:?}", "HANDLER");
 
-    Json("Hello, Cruel World!")
+    let item_id_option: Option<&Value> = json.get("item_id");
+    let item_id = match item_id_option {
+        Some(item_id) => match item_id.as_str() {
+            Some(item_id) => item_id,
+            None => return Json::default(),
+        },
+        None => return Json::default(),
+    };
+
+    let db_resp = state.db.delete(("items", item_id)).await;
+
+    let item: Item = match db_resp {
+        Ok(item_option) => match item_option {
+            Some(item) => item,
+            None => return Json::default(),
+        },
+        Err(err) => {
+            println!("Failed to delete item: {err:?}");
+            return Json::default();
+        }
+    };
+
+    Json(item)
 }
