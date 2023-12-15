@@ -421,7 +421,28 @@ pub async fn menu_add(
 ) -> impl IntoResponse {
     println!("->> {:<12} - handler menu_add - {json:?}", "HANDLER");
 
-    Json("Hello, Cruel World!")
+    let menu = Menu::from(json);
+
+    let record_option_result: Result<Option<Record>, surrealdb::Error> = state
+        .db
+        .create(("menus", menu.uuid.to_string()))
+        .content(menu)
+        .await;
+
+    let record_option = match record_option_result {
+        Ok(record_option) => record_option,
+        Err(err) => {
+            println!("Failed to add menu to database: {err:?}");
+            return Json::default();
+        }
+    };
+
+    let record = match record_option {
+        Some(record) => record,
+        None => return Json::default(),
+    };
+    dbg!(&record);
+    Json(record)
 }
 
 // TODO: Bug test
@@ -431,7 +452,29 @@ pub async fn menu_remove(
 ) -> impl IntoResponse {
     println!("->> {:<12} - handler menu_remove - {json:?}", "HANDLER");
 
-    Json("Hello, Cruel World!")
+    let menu_id_option: Option<&Value> = json.get("menu_id");
+    let menu_id = match menu_id_option {
+        Some(menu_id) => match menu_id.as_str() {
+            Some(menu_id) => menu_id.to_owned(),
+            None => return Json::default(),
+        },
+        None => return Json::default(),
+    };
+
+    let db_resp = state.db.delete(("menu", menu_id)).await;
+
+    let menu: Menu = match db_resp {
+        Ok(menu_option) => match menu_option {
+            Some(menu) => menu,
+            None => return Json::default(),
+        },
+        Err(err) => {
+            println!("Failed to delete menu: {err:?}");
+            return Json::default();
+        }
+    };
+
+    Json(menu)
 }
 
 // TODO: Bug test

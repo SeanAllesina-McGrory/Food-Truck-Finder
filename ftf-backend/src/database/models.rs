@@ -333,6 +333,7 @@ impl From<serde_json::Value> for Menu {
             }
         }
 
+        dbg!(&menu);
         menu
     }
 }
@@ -409,7 +410,7 @@ impl From<serde_json::Value> for Item {
             None => return Item::default(),
         };
 
-        let mut item = Item::new(
+        let item = Item::new(
             name,
             Some(Thing {
                 tb: "items".into(),
