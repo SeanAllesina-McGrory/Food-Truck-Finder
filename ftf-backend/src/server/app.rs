@@ -15,41 +15,46 @@ use tower_http::cors::{Any, CorsLayer};
 pub async fn make_app() -> Result<Router> {
     let cors = CorsLayer::new().allow_origin(Any);
 
-    // Any endpoint that can be queried freely, only returns public information
-    let public_endpoints = Router::new()
-        // Get all vendors
-        .route("/vendors", get(handlers::get_vendors))
-        // Get all events
-        .route("/events", get(handlers::get_events))
-        // Get specific vendor
-        .route("/vendors/:vendor_id", get(handlers::get_vendors))
-        // Get all events from a specific vendor
-        .route("/vendors/:vendor_id/events", get(handlers::get_events));
-    // Get specific event
-
-    // Any endpoint that requires pre-authorization to use
-    // Only return data which belongs to the authorized party
-    let private_endpoints = Router::new()
+    let endpoints = Router::new()
         // Post Routes
-        .route("/vendors", post(handlers::post_vendor))
-        .route("/events/:vendor_id", post(handlers::post_event))
-        .route("/menus/:vendor_id", post(handlers::post_menu))
-        .route("/items/:vendor_id", post(handlers::post_item))
-        // Patch Routes
-        .route("/vendors/:vendor_id", patch(handlers::patch_vendor))
-        .route("/events/:event_id", patch(handlers::patch_event))
-        .route("/menus/:menu_id", patch(handlers::patch_menu))
-        .route("/items/:item_id", patch(handlers::patch_item))
-        //Delete Routes
-        .route("/vendors/:vendor_id", delete(handlers::delete_vendor))
-        .route("/events/:event_id", delete(handlers::delete_event))
-        .route("/menus/:menu_id", delete(handlers::delete_menu))
-        .route("/items/:item_id", delete(handlers::delete_item));
-
+        .route(
+            "/vendors",
+            get(handlers::get_vendors).post(handlers::post_vendor),
+        )
+        .route("/events", get(handlers::get_events))
+        .route(
+            "/vendors/:vendor_id",
+            get(handlers::get_vendors)
+                .delete(handlers::delete_vendor)
+                .patch(handlers::patch_vendor),
+        )
+        .route(
+            "/events/:event_id",
+            get(handlers::get_events)
+                .post(handlers::post_event)
+                .delete(handlers::delete_event)
+                .patch(handlers::patch_event),
+        )
+        .route(
+            "/menus/:menu_id",
+            get(handlers::get_menus)
+                .post(handlers::post_menu)
+                .delete(handlers::delete_menu)
+                .patch(handlers::patch_menu),
+        )
+        .route(
+            "/items/:item_id",
+            get(handlers::get_items)
+                .post(handlers::post_item)
+                .delete(handlers::delete_item)
+                .patch(handlers::patch_item),
+        )
+        .route("/vendors/:vendor_id/events", get(handlers::get_events))
+        .route("/vendors/:vendor_id/menus", get(handlers::get_menus))
+        .route("/vendors/:vendor_id/items", get(handlers::get_items));
     let app = Router::new()
         .layer(cors)
-        .nest("/v1", public_endpoints)
-        .nest("/v1/auth", private_endpoints)
+        .nest("/v1", endpoints)
         .with_state(AppState {
             db: match db_connect().await {
                 Ok(db) => db,
