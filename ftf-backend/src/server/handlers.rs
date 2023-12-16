@@ -62,12 +62,16 @@ pub async fn get_events(
     Path(params): Path<HashMap<String, String>>,
     State(state): State<state::AppState>,
 ) -> impl IntoResponse {
+    println!("->> HANDLER - Events GET - {params:<60?}");
     if let Some(vendor_id) = params.get("vendor_id") {
         let events_vec_result: Result<Vec<Event>, surrealdb::Error> =
             state.db.select("events").await;
         let events_vec = match events_vec_result {
             Ok(events_vec) => events_vec,
-            Err(_) => Vec::new(),
+            Err(err) => {
+                println!("Failed in result match: Line 71\n{err:?}");
+                return Json::default();
+            }
         };
         let events_vec: Vec<Event> = events_vec
             .iter()
