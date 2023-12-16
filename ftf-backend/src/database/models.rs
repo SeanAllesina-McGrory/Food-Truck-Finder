@@ -123,14 +123,6 @@ impl Default for Vendor {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct VendorGetParams {
-    pub vendor_id: Option<String>,
-    pub event_id: Option<String>,
-    pub menu_id: Option<String>,
-    pub item_id: Option<String>,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Event {
     pub uuid: Cow<'static, str>,
@@ -246,12 +238,6 @@ impl Default for Event {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct EventGetParams {
-    pub event_id: Option<String>,
-    pub vendor_id: Option<String>,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Menu {
     pub uuid: Cow<'static, str>,
@@ -349,13 +335,6 @@ impl Default for Menu {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct MenuGetParams {
-    pub menu_id: Option<String>,
-    pub vendor_id: Option<String>,
-    pub event_id: Option<String>,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Item {
     pub uuid: Cow<'static, str>,
@@ -433,12 +412,6 @@ impl Default for Item {
             vendor: None,
         }
     }
-}
-#[derive(Debug, Deserialize)]
-pub struct ItemGetParams {
-    pub item_id: Option<String>,
-    pub vendor_id: Option<String>,
-    pub menu_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
