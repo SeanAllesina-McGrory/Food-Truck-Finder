@@ -1,9 +1,6 @@
 use crate::server::{handlers, state::AppState};
 use anyhow::{anyhow, Result};
-use axum::{
-    routing::{get, post},
-    Router,
-};
+use axum::{routing::get, Router};
 use std::env;
 use surrealdb::{
     engine::remote::ws::{Client, Ws},
@@ -16,18 +13,30 @@ pub async fn make_app() -> Result<Router> {
     let cors = CorsLayer::new().allow_origin(Any);
     let app = Router::new()
         .layer(cors)
-        .route("/vendor/get", get(handlers::vendor_get))
-        .route("/vendor/add", post(handlers::vendor_add))
-        .route("/vendor/remove", post(handlers::vendor_remove))
-        .route("/event/get", get(handlers::event_get))
-        .route("/event/add", post(handlers::event_add))
-        .route("/event/remove", post(handlers::event_remove))
-        .route("/menu/get", get(handlers::menu_get))
-        .route("/menu/add", post(handlers::menu_add))
-        .route("/menu/remove", post(handlers::menu_remove))
-        .route("/item/get", get(handlers::item_get))
-        .route("/item/add", post(handlers::item_add))
-        .route("/item/remove", post(handlers::item_remove))
+        .route(
+            "/vendor",
+            get(handlers::vendor_get)
+                .post(handlers::vendor_add)
+                .delete(handlers::vendor_remove),
+        )
+        .route(
+            "/event",
+            get(handlers::event_get)
+                .post(handlers::event_add)
+                .delete(handlers::event_remove),
+        )
+        .route(
+            "/menu",
+            get(handlers::menu_get)
+                .post(handlers::menu_add)
+                .delete(handlers::menu_remove),
+        )
+        .route(
+            "/item",
+            get(handlers::item_get)
+                .post(handlers::item_add)
+                .delete(handlers::item_remove),
+        )
         .with_state(AppState {
             db: match db_connect().await {
                 Ok(db) => db,

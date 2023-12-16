@@ -367,7 +367,7 @@ async fn check_route(route: &str) -> Result<()> {
 
 #[tokio::test]
 async fn handlers_test() -> Result<()> {
-    // Vendors
+    // Vendor auth_token setup
     let routes = vec![
         "/vendor/get",
         "/vendor/get?vendor_id=8F1C8C46AA9346C38048B794B9E5DDCA",
@@ -414,6 +414,8 @@ async fn handlers_test() -> Result<()> {
         .unwrap()
         .to_string();
 
+    // End vendor auth_token setup
+    // ----------------------------------------------------------------
     // Start Vendor add route tests
 
     let mut map = HashMap::new();
@@ -430,7 +432,8 @@ async fn handlers_test() -> Result<()> {
     let vendor_record = res.json::<server::handlers::Record>().await?;
 
     let vendor_id = vendor_record.id.id.to_string();
-
+    let mut vendor_test = Vendor::new("Ramen Ichiraku".into(), password_hash.into());
+    vendor_test.uuid = vendor_id.clone().into();
     let mut map = HashMap::new();
     map.insert("vendor_id", &vendor_id);
 
@@ -443,7 +446,8 @@ async fn handlers_test() -> Result<()> {
     // Start Event add and remove route tests
 
     let mut map = HashMap::new();
-    map.insert("datetime", chrono::Local::now().to_string());
+    let datetime = chrono::Local::now().to_string();
+    map.insert("datetime", datetime.clone());
     map.insert("location", format!("{:?}", geoutils::Location::new(0, 0)));
     map.insert("vendor", vendor_id.to_string());
 
@@ -456,6 +460,16 @@ async fn handlers_test() -> Result<()> {
     let event_record = res.json::<server::handlers::Record>().await?;
 
     let event_id = event_record.id.id.to_string();
+
+    let mut event_test = Event::new(
+        datetime,
+        format!("{:?}", geoutils::Location::new(0, 0)),
+        Some(Thing {
+            tb: "vendors".into(),
+            id: vendor_id.clone().into(),
+        }),
+    );
+    event_test.uuid = event_id.clone().into();
 
     let mut map = HashMap::new();
     map.insert("event_id", &event_id);
@@ -480,6 +494,15 @@ async fn handlers_test() -> Result<()> {
 
     let item_id = item_record.id.id.to_string();
 
+    let mut item_test = Item::new(
+        "Ramen".into(),
+        Some(Thing {
+            tb: "vendors".into(),
+            id: vendor_id.clone().into(),
+        }),
+    );
+    item_test.uuid = item_id.clone().into();
+
     let mut map = HashMap::new();
     map.insert("item_id", &item_id);
 
@@ -502,6 +525,12 @@ async fn handlers_test() -> Result<()> {
 
     let menu_id = menu_record.id.id.to_string();
 
+    let mut menu_test = Menu::new(Some(Thing {
+        tb: "vendors".into(),
+        id: vendor_id.clone().into(),
+    }));
+    menu_test.uuid = menu_id.clone().into();
+
     let mut map = HashMap::new();
     map.insert("menu_id", &menu_id);
 
@@ -511,15 +540,23 @@ async fn handlers_test() -> Result<()> {
     // ----------------------------------------------------------------
     // Start DB query
 
-    let routes = vec![
+    let mut check_routes = vec![
         format!("/vendor/get?vendor_id={}", vendor_id.to_string()),
         format!("/event/get?event_id={}", event_id.to_string()),
         format!("/menu/get?menu_id={}", menu_id.to_string()),
         format!("/item/get?item_id={}", item_id.to_string()),
+    ]
+    .into_iter();
+
+    let routes = vec![
+        "/vendor/add".to_string(),
+        "/event/add".to_string(),
+        "/menu/add".to_string(),
+        "/item/add".to_string(),
     ];
 
     for route in routes {
-        let result = check_route(&route).await;
+        let result = check_route(check_routes.next().unwrap().as_str()).await;
         match result {
             Ok(()) => println!("->> {:<60} - {}", route, "PASSED".green().underline()),
             Err(err) => println!(
@@ -537,19 +574,39 @@ async fn handlers_test() -> Result<()> {
 
     let res = delete_vendor_client.send().await?.json::<Vendor>().await?;
 
-    dbg!(res);
+    assert_eq!(res, vendor_test);
+    println!(
+        "->> {:<60} - {}",
+        "/vendor/remove",
+        "PASSED".green().underline()
+    );
 
     let res = delete_event_client.send().await?.json::<Event>().await?;
 
-    dbg!(res);
+    assert_eq!(res, event_test);
+    println!(
+        "->> {:<60} - {}",
+        "/event/remove",
+        "PASSED".green().underline()
+    );
 
     let res = delete_menu_client.send().await?.json::<Menu>().await?;
 
-    dbg!(res);
+    assert_eq!(res, menu_test);
+    println!(
+        "->> {:<60} - {}",
+        "/menu/remove",
+        "PASSED".green().underline()
+    );
 
     let res = delete_item_client.send().await?.json::<Item>().await?;
 
-    dbg!(res);
+    assert_eq!(res, item_test);
+    println!(
+        "->> {:<60} - {}",
+        "/item/remove",
+        "PASSED".green().underline()
+    );
 
     // End Cleanup
 

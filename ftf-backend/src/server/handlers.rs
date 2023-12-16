@@ -3,7 +3,7 @@ use crate::database::models::{Event, Item, Menu, Vendor};
 use crate::server::state;
 use axum::extract::{Json as ExtractJson, Query, State};
 use axum::response::IntoResponse;
-use axum::response::{Html, Json};
+use axum::response::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use surrealdb::sql::Thing;
@@ -180,7 +180,7 @@ pub async fn vendor_add(
 }
 
 // WARNING: There is essentially no situation where you should need to use this with any amount of
-// regularity. Keeping here to maintain parity between tables, but should be removed before pro
+// regularity. Keeping here to maintain parity between tables, but should be removed before prod
 // TODO: Bug test
 pub async fn vendor_remove(
     State(state): State<state::AppState>,
@@ -441,7 +441,6 @@ pub async fn menu_add(
         Some(record) => record,
         None => return Json::default(),
     };
-    dbg!(&record);
     Json(record)
 }
 
@@ -461,7 +460,7 @@ pub async fn menu_remove(
         None => return Json::default(),
     };
 
-    let db_resp = state.db.delete(("menu", menu_id)).await;
+    let db_resp = state.db.delete(("menus", menu_id)).await;
 
     let menu: Menu = match db_resp {
         Ok(menu_option) => match menu_option {

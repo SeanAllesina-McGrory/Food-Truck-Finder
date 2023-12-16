@@ -5,8 +5,9 @@ use surrealdb::sql::Thing;
 use uuid::Uuid;
 
 // TODO: Create multiple dispatch constructors for structs here
+// Or the rust equivalent of multiple dispatch since that isnt possible
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Vendor {
     pub uuid: Cow<'static, str>,
     pub name: Cow<'static, str>,
@@ -130,7 +131,7 @@ pub struct VendorGetParams {
     pub item_id: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Event {
     pub uuid: Cow<'static, str>,
     pub name: Cow<'static, str>,
@@ -245,14 +246,13 @@ impl Default for Event {
     }
 }
 
-// TODO: Add menu_id based get
 #[derive(Debug, Deserialize, Serialize)]
 pub struct EventGetParams {
     pub event_id: Option<String>,
     pub vendor_id: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Menu {
     pub uuid: Cow<'static, str>,
     pub name: Cow<'static, str>,
@@ -356,7 +356,7 @@ pub struct MenuGetParams {
     pub event_id: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Item {
     pub uuid: Cow<'static, str>,
     pub name: Cow<'static, str>,
@@ -413,7 +413,7 @@ impl From<serde_json::Value> for Item {
         let item = Item::new(
             name,
             Some(Thing {
-                tb: "items".into(),
+                tb: "vendors".into(),
                 id: vendor.into(),
             }),
         );
@@ -441,7 +441,7 @@ pub struct ItemGetParams {
     pub menu_id: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Day {
     NONE,
     MONDAY,
@@ -473,7 +473,7 @@ impl From<serde_json::Value> for Day {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Month {
     None,
     January,
@@ -515,7 +515,7 @@ impl From<serde_json::Value> for Month {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum ReoccurancePattern {
     None,
     OneTime,
@@ -564,7 +564,7 @@ impl From<serde_json::Value> for ReoccurancePattern {
                         Some(spacing) => match spacing.try_into() {
                             Ok(spacing) => spacing,
                             Err(err) => {
-                                println!("Unable to convert u64 to u32");
+                                println!("Unable to convert u64 to u32: {err:?}");
                                 return ReoccurancePattern::None;
                             }
                         },
@@ -580,7 +580,7 @@ impl From<serde_json::Value> for ReoccurancePattern {
                         Some(day_of_month) => match day_of_month.try_into() {
                             Ok(day_of_month) => day_of_month,
                             Err(err) => {
-                                println!("Unable to convert u64 to u32");
+                                println!("Unable to convert u64 to u32: {err:?}");
                                 return ReoccurancePattern::None;
                             }
                         },
@@ -593,7 +593,7 @@ impl From<serde_json::Value> for ReoccurancePattern {
                         Some(spacing) => match spacing.try_into() {
                             Ok(spacing) => spacing,
                             Err(err) => {
-                                println!("Unable to convert u64 to u32");
+                                println!("Unable to convert u64 to u32: {err:?}");
                                 return ReoccurancePattern::None;
                             }
                         },
@@ -616,7 +616,7 @@ impl From<serde_json::Value> for ReoccurancePattern {
                         Some(day_of_month) => match day_of_month.try_into() {
                             Ok(day_of_month) => day_of_month,
                             Err(err) => {
-                                println!("Unable to convert u64 to u32");
+                                println!("Unable to convert u64 to u32: {err:?}");
                                 return ReoccurancePattern::None;
                             }
                         },
