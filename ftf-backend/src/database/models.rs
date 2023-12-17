@@ -19,6 +19,7 @@ pub struct Vendor {
     pub website: Cow<'static, str>,
     pub events: Vec<Thing>,
     pub menus: Vec<Thing>,
+    pub items: Vec<Thing>,
 }
 
 impl Vendor {
@@ -38,13 +39,14 @@ impl Vendor {
             website: String::from("").into(),
             events: vec![],
             menus: vec![],
+            items: vec![],
         }
     }
 }
 
 impl fmt::Display for Vendor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "UUID: {}\nName: {}\nAuth Token: {}\nDescription: {}\nVendor Type: {}\nEmail: {}\nPhone Number: {}\nWebsite: {}\nEvents: {:?}\nMenus: {:?}", self.uuid, self.name, self.auth_token, self.description, self.vendor_type, self.email, self.phone_number, self.website, self.events, self.menus)
+        write!(f, "UUID: {}\nName: {}\nAuth Token: {}\nDescription: {}\nVendor Type: {}\nEmail: {}\nPhone Number: {}\nWebsite: {}\nEvents: {:?}\nMenus: {:?}\nItems: {:?}", self.uuid, self.name, self.auth_token, self.description, self.vendor_type, self.email, self.phone_number, self.website, self.events, self.menus, self.items)
     }
 }
 
@@ -119,6 +121,7 @@ impl Default for Vendor {
             website: "".into(),
             events: Vec::new(),
             menus: Vec::new(),
+            items: Vec::new(),
         }
     }
 }
