@@ -1,9 +1,14 @@
 use crate::server::{handlers, state::AppState};
 use anyhow::{anyhow, Result};
+use axum::body::Body;
+#[allow(unused_imports)]
 use axum::{
+    http::{Request, Response, StatusCode},
+    middleware,
     routing::{delete, get, patch, post},
     Router,
 };
+#[warn(unused_imports)]
 use std::env;
 use surrealdb::{
     engine::remote::ws::{Client, Ws},
@@ -15,19 +20,54 @@ use tower_http::cors::{Any, CorsLayer};
 pub async fn make_app() -> Result<Router> {
     let cors = CorsLayer::new().allow_origin(Any);
 
+    // The valid endpoints for the API
+    // Endpoints which can be accessed without authorization marked with *
+    // All others require preauthorization by means of a header with an auth token
+    //  this auth token allows accessing and modification of data owned by the
+    //  authorized party
+    //  Even when authorization is given, all requests are checked to verify they
+    //      only operate on owned or free data.
     let endpoints = Router::new()
-        // Post Routes
+        // Routes dealing with vendor resources
+        // Get -> All vendors*
+        // Post -> Creates a new vendor
+        //          This is a special route which is governed by a seperate authorization agent
+        //          Since a new vendor cannot verify themselves, and a vendor shouldn't be able to
+        //              create a new vendor
+        //          This route takes an Facebook Oauth string and can be freely called
+        //          WARNING: This route needs to do verification to ensure it is not used by
+        //          malicious individuals
+        //
+        // Else -> 404
         .route(
             "/vendors",
             get(handlers::get_vendors).post(handlers::post_vendor),
         )
+        // Routes dealing with general event resources
+        // Get -> All events*
+        // Else -> 404
         .route("/events", get(handlers::get_events))
+        // Routes dealing with specific vendor resources
+        // Get -> Specific vendor*
+        // Delete -> Specific vendor
+        //            WARNING: This route should not be accessable, it is here for parity
+        //            Admin authentication is necessary to call this route
+        //            Vendors won't be allowed to delete their own accounts
+        //
+        // Patch -> Specific vendor
+        // Else -> 404
         .route(
             "/vendors/:vendor_id",
             get(handlers::get_vendors)
                 .delete(handlers::delete_vendor)
                 .patch(handlers::patch_vendor),
         )
+        // Routes dealing with specific events
+        // Get -> Specific event*
+        // Post -> Creates new event for authorized vendor
+        // Delete -> Specific event belonging to authorized vendor
+        // Patch -> Specific event belong to authorized vendor
+        // Else -> 404
         .route(
             "/events/:event_id",
             get(handlers::get_events)
@@ -35,6 +75,12 @@ pub async fn make_app() -> Result<Router> {
                 .delete(handlers::delete_event)
                 .patch(handlers::patch_event),
         )
+        // Routes dealing with specific menus
+        // Get -> Specific menu
+        // Post -> Creates a new menu for authorized vendor
+        // Delete -> Specific menu belonging to authorized vendor
+        // Patch -> Specific menu belonging to authorized vendor
+        // Else -> 404
         .route(
             "/menus/:menu_id",
             get(handlers::get_menus)
@@ -42,6 +88,12 @@ pub async fn make_app() -> Result<Router> {
                 .delete(handlers::delete_menu)
                 .patch(handlers::patch_menu),
         )
+        // Routes dealing with specific items
+        // Get -> Specific item
+        // Post -> Creates a new item for authorized vendor
+        // Delete -> Specific item belonging to authorized vendor
+        // Patch -> Specific item belonging to authorized vendor
+        // Else -> 404
         .route(
             "/items/:item_id",
             get(handlers::get_items)
@@ -49,8 +101,15 @@ pub async fn make_app() -> Result<Router> {
                 .delete(handlers::delete_item)
                 .patch(handlers::patch_item),
         )
+        // Routes dealing with general groups belonging to a specific vendor
+        // Get -> All events belonging to specific vendor
+        // Else -> 404
         .route("/vendors/:vendor_id/events", get(handlers::get_events))
+        // Get -> All menus belonging to specific vendor
+        // Else -> 404
         .route("/vendors/:vendor_id/menus", get(handlers::get_menus))
+        // Get -> All items belonging to specific vendor
+        // Else -> 404
         .route("/vendors/:vendor_id/items", get(handlers::get_items));
     let app = Router::new()
         .layer(cors)
@@ -62,7 +121,8 @@ pub async fn make_app() -> Result<Router> {
                                                       // panic is undesirable but likely, add correcting code
                                                       // later
             },
-        });
+        })
+        .layer(middleware::from_fn(authorize));
     Ok(app)
 }
 
@@ -115,4 +175,16 @@ fn get_db_creds() -> Result<Vec<String>> {
     };
 
     Ok(vec![username, password])
+}
+
+async fn authorize(
+    request: Request<Body>,
+    next: middleware::Next,
+) -> Result<Response<Body>, StatusCode> {
+    if let Some(auth_token) = request.headers().get("AUTH_TOKEN") {
+        if auth_token.to_owned() == "1234" {
+            return Ok(next.run(request).await);
+        }
+    }
+    Err(StatusCode::UNAUTHORIZED)
 }
