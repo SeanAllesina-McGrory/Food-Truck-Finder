@@ -152,6 +152,14 @@ impl Event {
             vendor: vendor.into(),
         }
     }
+
+    pub fn with_vendor(mut self, vendor_id: String) -> Self {
+        self.vendor = Some(Thing {
+            tb: "vendors".into(),
+            id: vendor_id.into(),
+        });
+        self
+    }
 }
 
 impl fmt::Display for Event {
@@ -179,22 +187,14 @@ impl From<serde_json::Value> for Event {
             },
             None => return Event::default(),
         };
-        let vendor = match value.get("vendor") {
-            Some(vendor) => match vendor.as_str() {
-                Some(vendor) => vendor.to_owned(),
-                None => return Event::default(),
-            },
-            None => return Event::default(),
-        };
-        let mut event = Event::new(
-            datetime,
-            location,
-            Some(Thing {
-                tb: "vendors".into(),
-                id: vendor.into(),
-            }),
-        );
+        let mut event = Event::new(datetime, location, None);
 
+        if let Some(vendor_id) = value.get("vendor_id") {
+            event.vendor = Some(Thing {
+                tb: "vendors".into(),
+                id: vendor_id.to_string().into(),
+            });
+        }
         if let Some(name) = value.get("name") {
             match name.as_str() {
                 Some(name) => event.name = name.to_owned().into(),
@@ -259,6 +259,14 @@ impl Menu {
             vendor: vendor.into(),
         }
     }
+
+    pub fn with_vendor(mut self, vendor_id: String) -> Self {
+        self.vendor = Some(Thing {
+            tb: "vendors".into(),
+            id: vendor_id.into(),
+        });
+        self
+    }
 }
 
 impl fmt::Display for Menu {
@@ -279,18 +287,14 @@ impl fmt::Display for Menu {
 
 impl From<serde_json::Value> for Menu {
     fn from(value: serde_json::Value) -> Self {
-        let vendor = match value.get("vendor") {
-            Some(vendor) => match vendor.as_str() {
-                Some(vendor) => vendor.to_owned(),
-                None => return Menu::default(),
-            },
-            None => return Menu::default(),
-        };
+        let mut menu = Menu::new(None);
 
-        let mut menu = Menu::new(Some(Thing {
-            tb: "vendors".into(),
-            id: vendor.into(),
-        }));
+        if let Some(vendor_id) = value.get("vendor_id") {
+            menu.vendor = Some(Thing {
+                tb: "vendors".into(),
+                id: vendor_id.to_string().into(),
+            });
+        }
 
         if let Some(name) = value.get("name") {
             match name.as_str() {
@@ -319,7 +323,6 @@ impl From<serde_json::Value> for Menu {
             }
         }
 
-        dbg!(&menu);
         menu
     }
 }
@@ -360,6 +363,14 @@ impl Item {
             vendor: vendor.into(),
         }
     }
+
+    pub fn with_vendor(mut self, vendor_id: String) -> Self {
+        self.vendor = Some(Thing {
+            tb: "vendors".into(),
+            id: vendor_id.into(),
+        });
+        self
+    }
 }
 
 impl fmt::Display for Item {
@@ -381,21 +392,15 @@ impl From<serde_json::Value> for Item {
             },
             None => return Item::default(),
         };
-        let vendor = match value.get("vendor") {
-            Some(vendor) => match vendor.as_str() {
-                Some(vendor) => vendor.to_owned(),
-                None => return Item::default(),
-            },
-            None => return Item::default(),
-        };
 
-        let item = Item::new(
-            name,
-            Some(Thing {
+        let mut item = Item::new(name, None);
+
+        if let Some(vendor_id) = value.get("vendor_id") {
+            item.vendor = Some(Thing {
                 tb: "vendors".into(),
-                id: vendor.into(),
-            }),
-        );
+                id: vendor_id.to_string().into(),
+            });
+        }
 
         item
     }
