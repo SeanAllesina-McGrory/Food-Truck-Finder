@@ -6,3 +6,4 @@ ftf-backend/test_watcher.sh
 SurrealDB
 ftf-backend/*.csv
 backups
+start_surreal.sh
