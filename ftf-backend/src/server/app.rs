@@ -64,53 +64,59 @@ pub async fn make_app() -> Result<Router> {
         )
         // Routes dealing with specific events
         // Get -> Specific event*
-        // Post -> Creates new event for authorized vendor
         // Delete -> Specific event belonging to authorized vendor
         // Patch -> Specific event belong to authorized vendor
         // Else -> 404
         .route(
             "/events/:event_id",
             get(handlers::get_events)
-                .post(handlers::post_event)
                 .delete(handlers::delete_event)
                 .patch(handlers::patch_event),
         )
         // Routes dealing with specific menus
         // Get -> Specific menu
-        // Post -> Creates a new menu for authorized vendor
         // Delete -> Specific menu belonging to authorized vendor
         // Patch -> Specific menu belonging to authorized vendor
         // Else -> 404
         .route(
             "/menus/:menu_id",
             get(handlers::get_menus)
-                .post(handlers::post_menu)
                 .delete(handlers::delete_menu)
                 .patch(handlers::patch_menu),
         )
         // Routes dealing with specific items
         // Get -> Specific item
-        // Post -> Creates a new item for authorized vendor
         // Delete -> Specific item belonging to authorized vendor
         // Patch -> Specific item belonging to authorized vendor
         // Else -> 404
         .route(
             "/items/:item_id",
             get(handlers::get_items)
-                .post(handlers::post_item)
                 .delete(handlers::delete_item)
                 .patch(handlers::patch_item),
         )
         // Routes dealing with general groups belonging to a specific vendor
         // Get -> All events belonging to specific vendor
+        // Post -> Creates new event for authorized vendor
         // Else -> 404
-        .route("/vendors/:vendor_id/events", get(handlers::get_events))
+        .route(
+            "/vendors/:vendor_id/events",
+            get(handlers::get_events).post(handlers::post_event),
+        )
         // Get -> All menus belonging to specific vendor
+        // Post -> Creates a new menu for authorized vendor
         // Else -> 404
-        .route("/vendors/:vendor_id/menus", get(handlers::get_menus))
+        .route(
+            "/vendors/:vendor_id/menus",
+            get(handlers::get_menus).post(handlers::post_menu),
+        )
         // Get -> All items belonging to specific vendor
+        // Post -> Creates a new item for authorized vendor
         // Else -> 404
-        .route("/vendors/:vendor_id/items", get(handlers::get_items));
+        .route(
+            "/vendors/:vendor_id/items",
+            get(handlers::get_items).post(handlers::post_item),
+        );
     let app = Router::new()
         .layer(cors)
         .nest("/v1", endpoints)
