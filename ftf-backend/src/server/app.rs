@@ -1,4 +1,4 @@
-use crate::server::{handlers, state::AppState};
+use crate::server::{handlers, middleware::authorize, state::AppState};
 use anyhow::{anyhow, Result};
 use axum::{
     routing::{delete, get, patch, post},

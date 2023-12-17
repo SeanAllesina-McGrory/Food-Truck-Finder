@@ -24,3 +24,6 @@ encoding_rs_io = "0.1.7"
 argon2 = "0.5.2"
 colored = "2.1.0"
 reqwest = { version = "0.11.22", features = [ "json", "blocking" ] }
+tower-layer = "0.3.2"
+tower-service = "0.3.2"
+pin-project-lite = "0.2.13"
