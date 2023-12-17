@@ -455,7 +455,10 @@ pub async fn post_event(
     State(state): State<state::AppState>,
     Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("->> {:<12} - handler vendor_add - {json:?}", "HANDLER");
+    println!(
+        "->> {:<12} - handler post_event - {params:?} - {json:?}",
+        "HANDLER"
+    );
 
     if let Some(vendor_id) = params.get("vendor_id") {
         let event = Event::from(json).with_vendor(vendor_id.into());
@@ -490,7 +493,10 @@ pub async fn post_menu(
     State(state): State<state::AppState>,
     Json(json): ExtractJson<serde_json::Value>,
 ) -> impl IntoResponse {
-    println!("->> {:<12} - handler menu_add - {json:?}", "HANDLER");
+    println!(
+        "->> {:<12} - handler menu_add - {params:?} - {json:?}",
+        "HANDLER"
+    );
 
     if let Some(vendor_id) = params.get("vendor_id") {
         let menu = Menu::from(json).with_vendor(vendor_id.into());
@@ -513,6 +519,7 @@ pub async fn post_menu(
             Some(record) => record,
             None => return Json::default(),
         };
+
         return Json(record);
     }
     Json::default()
