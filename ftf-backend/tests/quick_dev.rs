@@ -369,22 +369,10 @@ async fn check_route(route: &str) -> Result<()> {
 async fn handlers_test() -> Result<()> {
     // Vendor auth_token setup
     let routes = vec![
-        "/vendor/get",
-        "/vendor/get?vendor_id=8F1C8C46AA9346C38048B794B9E5DDCA",
-        "/vendor/get?event_id=087F5EBAEFE94796B47C1001AFB1C95E",
-        "/vendor/get?menu_id=81059E4DA8A647A087AEE3B973C42815",
-        "/vendor/get?item_id=3D22AD60C2E24374907D08B2A3CE8043",
-        "/event/get",
-        "/event/get?event_id=517FF0324B7846D291CEAAF4B2288B53",
-        "/event/get?vendor_id=477C686ACAB3402AB7D50554D3C6A8FF",
-        "/menu/get",
-        "/menu/get?menu_id=28ACC2C6BB264F409EAF59C87D2EA3AC",
-        "/menu/get?vendor_id=C67785E27B9843468E8DCC5175620340",
-        "/menu/get?event_id=88A8D9E031A04793A69B2107254979E0",
-        "/item/get",
-        "/item/get?item_id=895D606D7B3A4B7886AE91EF6BE49A85",
-        "/item/get?vendor_id=C67785E27B9843468E8DCC5175620340",
-        "/item/get?menu_id=7C492130851C405DB395A2B896822A09",
+        "/v1/vendors",
+        "/v1/events",
+        "/v1/vendors/088ADD402AC44769A6A725FD3225A4A1",
+        "/v1/vendors/9C6569119B4046D2A3F584ACD20D4DA9/events",
     ];
 
     for route in routes {
@@ -424,7 +412,7 @@ async fn handlers_test() -> Result<()> {
 
     let client = reqwest::Client::new();
     let res = client
-        .post("http://localhost:8080/vendor/add")
+        .post("http://localhost:8080/v1/vendors")
         .json(&map)
         .send()
         .await?;
@@ -434,12 +422,9 @@ async fn handlers_test() -> Result<()> {
     let vendor_id = vendor_record.id.id.to_string();
     let mut vendor_test = Vendor::new("Ramen Ichiraku".into(), password_hash.into());
     vendor_test.uuid = vendor_id.clone().into();
-    let mut map = HashMap::new();
-    map.insert("vendor_id", &vendor_id);
 
-    let delete_vendor_client = client
-        .post("http://localhost:8080/vendor/remove")
-        .json(&map);
+    let delete_vendor_client =
+        client.delete(format!("http://localhost:8080/v1/vendors/{vendor_id}"));
 
     // End Vendor add route tests
     // ----------------------------------------------------------------
@@ -449,10 +434,9 @@ async fn handlers_test() -> Result<()> {
     let datetime = chrono::Local::now().to_string();
     map.insert("datetime", datetime.clone());
     map.insert("location", format!("{:?}", geoutils::Location::new(0, 0)));
-    map.insert("vendor", vendor_id.to_string());
 
     let res = client
-        .post("http://localhost:8080/event/add")
+        .post(format!("http://localhost:8080/v1/events/{vendor_id}"))
         .json(&map)
         .send()
         .await?;
@@ -474,7 +458,7 @@ async fn handlers_test() -> Result<()> {
     let mut map = HashMap::new();
     map.insert("event_id", &event_id);
 
-    let delete_event_client = client.post("http://localhost:8080/event/remove").json(&map);
+    let delete_event_client = client.delete(format!("http://localhost:8080/v1/events/"));
 
     // End Event add and remove route tests
     // ----------------------------------------------------------------
