@@ -7,3 +7,6 @@ SurrealDB
 ftf-backend/*.csv
 backups
 start_surreal.sh
+ftf-frontend/target
+ftf-frontend/Cargo.lock
+ftf-frontend/dist
