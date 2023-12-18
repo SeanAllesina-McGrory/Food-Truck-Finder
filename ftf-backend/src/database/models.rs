@@ -11,7 +11,6 @@ use uuid::Uuid;
 pub struct Vendor {
     pub uuid: Cow<'static, str>,
     pub name: Cow<'static, str>,
-    pub auth_token: Cow<'static, str>,
     pub description: Cow<'static, str>,
     pub vendor_type: Cow<'static, str>,
     pub email: Cow<'static, str>,
@@ -23,7 +22,7 @@ pub struct Vendor {
 }
 
 impl Vendor {
-    pub fn new(name: String, auth_token: String) -> Self {
+    pub fn new(name: String) -> Self {
         Vendor {
             uuid: Cow::Owned(String::from(
                 Uuid::new_v4()
@@ -31,7 +30,6 @@ impl Vendor {
                     .encode_upper(&mut uuid::Uuid::encode_buffer()),
             )),
             name: name.into(),
-            auth_token: auth_token.into(),
             description: String::from("").into(),
             vendor_type: String::from("").into(),
             email: String::from("").into(),
@@ -46,7 +44,7 @@ impl Vendor {
 
 impl fmt::Display for Vendor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "UUID: {}\nName: {}\nAuth Token: {}\nDescription: {}\nVendor Type: {}\nEmail: {}\nPhone Number: {}\nWebsite: {}\nEvents: {:?}\nMenus: {:?}\nItems: {:?}", self.uuid, self.name, self.auth_token, self.description, self.vendor_type, self.email, self.phone_number, self.website, self.events, self.menus, self.items)
+        write!(f, "UUID: {}\nName: {}\nDescription: {}\nVendor Type: {}\nEmail: {}\nPhone Number: {}\nWebsite: {}\nEvents: {:?}\nMenus: {:?}\nItems: {:?}", self.uuid, self.name, self.description, self.vendor_type, self.email, self.phone_number, self.website, self.events, self.menus, self.items)
     }
 }
 
@@ -65,15 +63,8 @@ impl From<serde_json::Value> for Vendor {
             },
             None => return Vendor::default(),
         };
-        let auth_token = match value.get("auth_token") {
-            Some(auth_token) => match auth_token.as_str() {
-                Some(auth_token) => auth_token.to_owned(),
-                None => return Vendor::default(),
-            },
-            None => return Vendor::default(),
-        };
 
-        let mut vendor = Vendor::new(name.to_string(), auth_token.to_string());
+        let mut vendor = Vendor::new(name.to_string());
         if let Some(description) = value.get("description") {
             match description.as_str() {
                 Some(description) => vendor.description = description.to_owned().into(),
@@ -113,7 +104,6 @@ impl Default for Vendor {
         Vendor {
             uuid: "".into(),
             name: "".into(),
-            auth_token: "".into(),
             description: "".into(),
             vendor_type: "".into(),
             email: "".into(),

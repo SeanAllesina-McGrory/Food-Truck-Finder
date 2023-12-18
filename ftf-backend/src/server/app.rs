@@ -1,15 +1,29 @@
 use crate::server::{handlers, state::AppState};
 use anyhow::{anyhow, Result};
-use axum::body::Body;
+use argon2::{
+    password_hash::{rand_core::OsRng, SaltString},
+    Argon2, PasswordHasher,
+};
+use axum::{
+    body::Body,
+    extract::{Path, Query, State},
+    http::HeaderMap,
+    response::Redirect,
+};
 #[allow(unused_imports)]
 use axum::{
-    http::{Request, Response, StatusCode},
+    http::{Method, Request, Response, StatusCode},
     middleware,
     routing::{delete, get, patch, post},
     Router,
 };
+use serde::{Deserialize, Serialize};
+use std::{
+    borrow::Cow,
+    collections::{self, HashMap},
+};
 #[warn(unused_imports)]
-use std::env;
+use std::{env, iter::Map};
 use surrealdb::{
     engine::remote::ws::{Client, Ws},
     opt::auth::Root,
@@ -17,8 +31,12 @@ use surrealdb::{
 };
 use tower_http::cors::{Any, CorsLayer};
 
+use super::{handlers::Record, state};
+
 pub async fn make_app() -> Result<Router> {
-    let cors = CorsLayer::new().allow_origin(Any);
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH])
+        .allow_origin(Any);
 
     // The valid endpoints for the API
     // Endpoints which can be accessed without authorization marked with *
@@ -117,8 +135,10 @@ pub async fn make_app() -> Result<Router> {
             "/vendors/:vendor_id/items",
             get(handlers::get_items).post(handlers::post_item),
         );
+
     let app = Router::new()
         .layer(cors)
+        .route("/auth", get(authorize))
         .nest("/v1", endpoints)
         .with_state(AppState {
             db: match db_connect().await {
@@ -127,8 +147,7 @@ pub async fn make_app() -> Result<Router> {
                                                       // panic is undesirable but likely, add correcting code
                                                       // later
             },
-        })
-        .layer(middleware::from_fn(authorize));
+        });
     Ok(app)
 }
 
@@ -183,14 +202,106 @@ fn get_db_creds() -> Result<Vec<String>> {
     Ok(vec![username, password])
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct TokenStore {
+    token_hash: Cow<'static, str>,
+    expires: Cow<'static, i64>,
+    venodr_id: Cow<'static, str>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Token {
+    access_token: String,
+    token_type: String,
+    expires_in: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct AuthorizeParams {
+    code: String,
+    state: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Email {
+    email: String,
+    id: String,
+}
+
+// This is where the code which authorizes a user will go
+// For now it will take the header: "Authorization" and store it in the database
+// When a user sends a request, their provided Authorization header will be checked
+//      against the database and if the provided token exists they will be considered authenticated
 async fn authorize(
-    request: Request<Body>,
-    next: middleware::Next,
-) -> Result<Response<Body>, StatusCode> {
-    if let Some(auth_token) = request.headers().get("AUTH_TOKEN") {
-        if auth_token.to_owned() == "1234" {
-            return Ok(next.run(request).await);
-        }
+    Query(params): Query<AuthorizeParams>,
+    State(state): State<state::AppState>,
+) -> Redirect {
+    dbg!(&params);
+    let code = params.code;
+
+    if let Ok(verify_code_url) = env::var("VERIFY_CODE_URL_TEST") {
+        dbg!(&code);
+        let url = format!("{verify_code_url}{code}");
+        println!("{}", &url);
+        let response_result = reqwest::get(url).await;
+        let response = match response_result {
+            Ok(response) => response,
+            Err(err) => return Redirect::to("http://localhost:8081"),
+        };
+        let token_result = response.json::<Token>().await;
+        let mut token = match token_result {
+            Ok(token) => token,
+            Err(err) => return Redirect::to("http://localhost:8081"),
+        };
+
+        let response_result = reqwest::get(format!(
+            "https://graph.facebook.com/v18.0/me?fields=email&access_token={}",
+            token.access_token
+        ))
+        .await;
+        let response = match response_result {
+            Ok(response) => response,
+            Err(err) => return Redirect::to("http://localhost:8081"),
+        };
+
+        let email_result = response.json::<Email>().await;
+        let email = match email_result {
+            Ok(token) => token,
+            Err(err) => return Redirect::to("http://localhost:8081"),
+        };
+
+        println!("{}", email.email);
+
+        let params: argon2::Params = argon2::Params::new(512, 32, 16, 32.into()).unwrap();
+        let salt = SaltString::generate(&mut OsRng);
+
+        let argon2 = Argon2::new(
+            argon2::Algorithm::Argon2i,
+            argon2::Version::V0x13,
+            params.clone(),
+        );
+
+        let token_hash = argon2
+            .hash_password(token.access_token.as_bytes(), &salt)
+            .unwrap()
+            .to_string();
+
+        token.access_token = token_hash;
+        let records_result: Result<Vec<Token>, surrealdb::Error> =
+            state.db.create("tokens").content(TokenStore{
+                token_hash: token_hash.into(),
+                expires: chrono::Utc::now().timestamp() + token.expires_in,
+                vendor_id:
+
+            }).await;
+        let records = match records_result {
+            Ok(_) => {
+                println!("User was authenticated");
+                return Redirect::to("http://localhost:8081/auth");
+            }
+            Err(err) => return Redirect::to("http://localhost:8081"),
+        };
     }
-    Err(StatusCode::UNAUTHORIZED)
+
+    Redirect::to("http://localhost:8081")
 }
