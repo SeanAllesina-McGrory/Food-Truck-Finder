@@ -1,5 +1,6 @@
 mod database;
 mod server;
+mod utils;
 
 use crate::server::app;
 
