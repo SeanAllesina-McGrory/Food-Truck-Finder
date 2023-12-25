@@ -1,7 +1,0 @@
-[serve]
-# Lan address
-address = "127.0.0.1"
-# Wan address
-# address = "0.0.0.0"
-# Port
-port = 8081
