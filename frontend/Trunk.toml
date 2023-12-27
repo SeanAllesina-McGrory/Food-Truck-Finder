@@ -4,11 +4,11 @@ dist = "../dist"
 
 [serve]
 port = 3443
-tls_key_path = "../server/certs/ssc/key.pem"
-tls_cert_path = "../server/certs/ssc/cert.pem"
 
 [[proxy]]
-backend = "https://localhost:8080/api/"
+backend = "http://localhost:8080/api/"
+insecure = true
 
 [[proxy]]
-backend = "https://loclahost:8080/auth/token"
+backend = "http://localhost:8080/auth/token"
+insecure = true
