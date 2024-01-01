@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::database::models::{Event, Item, Menu, Vendor};
 use crate::server::state;
 use axum::extract::{Path, State};
+use axum::http::HeaderMap;
 use axum::response::IntoResponse;
 use axum::response::Json;
 
@@ -10,7 +11,11 @@ use axum::response::Json;
 pub async fn get_vendors(
     Path(params): Path<HashMap<String, String>>,
     State(state): State<state::AppState>,
+    headers: HeaderMap,
 ) -> impl IntoResponse {
+    for header in headers {
+        println!("{header:?}");
+    }
     if let Some(vendor_id) = params.get("vendor_id") {
         let vendor_result: Result<Option<Vendor>, surrealdb::Error> =
             state.db.select(("vendors", vendor_id)).await;
