@@ -1,6 +1,5 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
-use serde::Serialize;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TokenStore {
@@ -27,3 +26,22 @@ pub struct Email {
     pub email: String,
     pub id: String,
 }
+
+#[derive(Clone, Deserialize, Debug, Serialize)]
+pub struct JWTExtraFeilds {
+    jwt: String,
+}
+
+impl JWTExtraFeilds {
+    pub fn new(jwt: String) -> Self {
+        Self { jwt }
+    }
+
+    pub(crate) fn default() -> Self {
+        Self {
+            jwt: String::from(""),
+        }
+    }
+}
+
+impl oauth2::ExtraTokenFields for JWTExtraFeilds {}
