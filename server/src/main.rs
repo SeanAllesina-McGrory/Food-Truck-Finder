@@ -7,7 +7,6 @@ use axum::{http::Uri, response::Redirect, Router};
 use axum_server::tls_openssl::OpenSSLConfig;
 use std::net::SocketAddr;
 
-
 #[tokio::main]
 async fn main() {
     let app = match app::make_app().await {
@@ -25,11 +24,11 @@ async fn main() {
     };
     // region:      -- Start Server
 
-    let config = OpenSSLConfig::from_pem_file("certs/ssc/cert.pem", "certs/ssc/key.pem").unwrap();
+    //let config = OpenSSLConfig::from_pem_file("certs/ssc/cert.pem", "certs/ssc/key.pem").unwrap();
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("Listening on {addr}");
-    axum_server::bind_openssl(addr, config)
+    axum_server::bind(addr)
         .serve(app.into_make_service())
         .await
         .unwrap();

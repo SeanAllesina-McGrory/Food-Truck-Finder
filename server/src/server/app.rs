@@ -3,16 +3,14 @@ use crate::server::{
     middleware::{authenticator, authorizer},
     state::AppState,
 };
-use anyhow::{anyhow, Result};
-#[allow(unused_imports)]
 use axum::{
-    http::{Method, Request, Response, StatusCode},
+    http::Method,
     middleware,
-    routing::{delete, get, patch, post},
+    routing::{get, post},
     Router,
 };
+use color_eyre::{eyre::bail, Result};
 use std::env;
-#[warn(unused_imports)]
 use surrealdb::{
     engine::remote::ws::{Client, Ws},
     opt::auth::Root,
@@ -122,24 +120,27 @@ pub async fn make_app() -> Result<Router> {
             "/vendors/:vendor_id/items",
             get(handlers::get::get_items).post(handlers::post::post_item),
         )
-        .with_state(AppState {
-            db: match db_connect().await {
-                Ok(db) => db,
-                Err(err) => return Err(anyhow!(err)), // FIX : The database could not be created, if this happens a
-                                                      // panic is undesirable but likely, add correcting code
-                                                      // later
-            },
-        })
         .layer(
             tower::ServiceBuilder::new()
                 .layer(middleware::from_fn(authenticator))
                 .layer(middleware::from_fn(authorizer)),
         );
 
-    let api = Router::new().nest("/api", endpoints).layer(cors.clone());
-    let auth = Router::new().route("/auth/token", get(crate::utils::auth::token).post(crate::utils::auth::token)).layer(cors);
+    let api = Router::new().nest("/api", endpoints);
+    let auth = Router::new().route("/auth/token", post(crate::utils::auth::token));
 
-    let app = Router::new().merge(api).merge(auth);
+    let app = Router::new()
+        .merge(api)
+        .merge(auth)
+        .with_state(AppState {
+            db: match db_connect().await {
+                Ok(db) => db,
+                Err(err) => return Err(bail!(err)), // FIX : The database could not be created, if this happens a
+                                                    // panic is undesirable but likely, add correcting code
+                                                    // later
+            },
+        })
+        .layer(cors);
     Ok(app)
 }
 
@@ -155,7 +156,7 @@ pub async fn db_connect() -> Result<Surreal<Client>> {
             })
             .await?;
         }
-        Err(_) => return Err(anyhow!("Failed to connect to database")),
+        Err(_) => return Err(bail!("Failed to connect to database")),
     }
 
     // Sets up the database info, will just use defaults if the env variables aren't set
@@ -177,7 +178,7 @@ fn get_db_creds() -> Result<Vec<String>> {
     let username = match env::var("DBUN") {
         Ok(uname) => uname,
         Err(_) => {
-            return Err(anyhow!(
+            return Err(bail!(
                 "Database username environment variable could not be resolved"
             ))
         }
@@ -185,7 +186,7 @@ fn get_db_creds() -> Result<Vec<String>> {
     let password = match env::var("DBPW") {
         Ok(pword) => pword,
         Err(_) => {
-            return Err(anyhow!(
+            return Err(bail!(
                 "Database password environment variable could not be resolved"
             ))
         }
