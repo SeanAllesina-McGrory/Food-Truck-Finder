@@ -56,6 +56,12 @@ impl Vendor {
             items: vec![],
         }
     }
+    pub fn email(self, email: String) -> Self {
+        Vendor {
+            email: email.into(),
+            ..self
+        }
+    }
 }
 
 impl fmt::Display for Vendor {

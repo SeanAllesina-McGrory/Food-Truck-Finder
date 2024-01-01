@@ -1,6 +1,7 @@
 use axum::response::IntoResponse;
 use axum::Form;
 use axum::Json;
+use color_eyre::{eyre::bail, Result};
 use dotenv::dotenv;
 use log::{error, info};
 use oauth2::basic::BasicClient;
