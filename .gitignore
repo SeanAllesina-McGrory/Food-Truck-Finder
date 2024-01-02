@@ -27,3 +27,7 @@ server/menus.csv
 server/run_watcher.sh
 server/test_watcher.sh
 server/vendors.csv
+server/target/debug
+server/target/.rustc_info.json
+server/target/CACHEDIR.TAG
+.DS_Store
