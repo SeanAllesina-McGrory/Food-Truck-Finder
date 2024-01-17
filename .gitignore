@@ -27,3 +27,7 @@ server/menus.csv
 server/run_watcher.sh
 server/test_watcher.sh
 server/vendors.csv
+SurrealDB.old
+frontend/.vscode
+frontend-old
+server/target

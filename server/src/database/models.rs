@@ -1,3 +1,5 @@
+use geocoding::{self, Forward};
+use log::warn;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt;
@@ -144,6 +146,8 @@ pub struct Event {
     pub name: Cow<'static, str>,
     pub datetime: Cow<'static, str>,
     pub location: Cow<'static, str>,
+    pub cord_x: f64,
+    pub cord_y: f64,
     pub menu: Option<Thing>,
     pub repeat_schedule: Cow<'static, ReoccurancePattern>,
     pub repeat_end: Cow<'static, str>,
@@ -152,6 +156,18 @@ pub struct Event {
 
 impl Event {
     pub fn new(datetime: String, location: String, vendor: Option<Thing>) -> Self {
+        let address = location.clone();
+        // TODO: See about having a static instance of this
+        // PERF: Check on custom endpoint
+        let osm = geocoding::Openstreetmap::new();
+        let result = osm.forward(&address);
+        let cords = match result {
+            Ok(point_vec) => point_vec[0],
+            Err(err) => {
+                warn!("{}", err);
+                geocoding::Point::new(0.0, 0.0)
+            }
+        };
         Event {
             uuid: Cow::Owned(String::from(
                 Uuid::new_v4()
@@ -161,6 +177,8 @@ impl Event {
             name: "".into(),
             datetime: datetime.clone().into(),
             location: location.into(),
+            cord_x: cords.x(),
+            cord_y: cords.y(),
             menu: None,
             repeat_schedule: ReoccurancePattern::OneTime.into(),
             repeat_end: datetime.into(),
@@ -245,6 +263,8 @@ impl Default for Event {
             name: "".into(),
             datetime: "".into(),
             location: "".into(),
+            cord_x: 0.0.into(),
+            cord_y: 0.0.into(),
             menu: None,
             repeat_schedule: ReoccurancePattern::None.into(),
             repeat_end: "".into(),
@@ -627,3 +647,47 @@ impl From<serde_json::Value> for ReoccurancePattern {
     }
 }
 // endregion:   -- Data Structures
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct Location {
+    pub address: Cow<'static, str>,
+    // TODO: Verify that a f64 is accurate enough for gps cords
+    // TODO: Check if a smaller size can be used, not super important but good to check
+    pub x: f64,
+    pub y: f64,
+}
+
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Into<Cow<'static, Location>> for Location {
+    fn into(self) -> Cow<'static, Location> {
+        Cow::Owned(self)
+    }
+}
+
+impl From<String> for Location {
+    fn from(value: String) -> Self {
+        // Logic that turns the string into a cord
+        let address = value.clone();
+        // TODO: See about having a static instance of this
+        // PERF: Check on custom endpoint
+        let osm = geocoding::Openstreetmap::new();
+        let result = osm.forward(&value);
+        let cords = match result {
+            Ok(point_vec) => point_vec[0],
+            Err(err) => {
+                warn!("{}", err);
+                geocoding::Point::new(0.0, 0.0)
+            }
+        };
+        Self {
+            address: value.into(),
+            x: cords.x(),
+            y: cords.y(),
+        }
+    }
+}
