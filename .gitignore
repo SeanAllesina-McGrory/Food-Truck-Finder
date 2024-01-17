@@ -31,3 +31,4 @@ SurrealDB.old
 frontend/.vscode
 frontend-old
 server/target
+.DS_Store
