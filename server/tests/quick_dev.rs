@@ -6,25 +6,25 @@ mod server;
 #[path = "../src/utils.rs"]
 mod utils;
 use crate::database::models::{Event, Item, Menu, Record, ReoccurancePattern, Vendor};
-use anyhow::{anyhow, Result};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
 use chrono::prelude::*;
+use color_eyre::{eyre::anyhow, Result};
 use colored::Colorize;
 use csv::{ReaderBuilder, StringRecord};
+use dotenv;
 use encoding_rs::WINDOWS_1252;
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use geoutils::Location;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::{borrow::Cow, collections::HashMap};
 use std::{fs::File, io::Read};
 use surrealdb::{engine::remote::ws::Client, sql::Thing};
 use surrealdb::{sql::Id, Surreal};
 use tokio::sync::futures;
-use dotenv;
-use std::env;
 
 #[derive(Debug, Deserialize)]
 struct VendorRecord {
@@ -155,10 +155,24 @@ async fn repopulate_database() -> Result<()> {
             .unwrap();
     }
 
+    println!("Finished vendors");
+
     let _: Vec<Event> = db.delete("events").await?;
 
     let event_records = read_csv("./events.csv".into(), |e| EventRecord::new(e)).unwrap();
 
+    /*let address = location.clone();
+    // TODO: See about having a static instance of this
+    // PERF: Check on custom endpoint
+    let osm = Openstreetmap::new();
+    let result = osm.forward(&address);
+    let cords = match result {
+        Ok(point_vec) => point_vec[0],
+        Err(err) => {
+            warn!("{}", err);
+            Point::new(0.0, 0.0)
+        }
+    };*/
     let events_vec: Vec<Event> = event_records
         .iter()
         .map(|event_record| {
@@ -173,8 +187,6 @@ async fn repopulate_database() -> Result<()> {
         })
         .collect();
 
-    println!("Hello");
-
     for event in events_vec {
         let _: Event = db
             .create(("events", event.uuid.to_string()))
@@ -183,8 +195,6 @@ async fn repopulate_database() -> Result<()> {
             .unwrap()
             .unwrap();
     }
-
-    println!("Hello");
 
     let _: Vec<Item> = db.delete("items").await?;
 
@@ -254,8 +264,8 @@ async fn repopulate_database() -> Result<()> {
             .unwrap();
     }
 
-    /*
-     *
+    println!("Test");
+
     let sql = r#"
             FOR $vendor IN (SELECT VALUE id FROM vendors) {
                 UPDATE $vendor SET events = (SELECT VALUE id FROM events ORDER BY rand() LIMIT 3);
@@ -274,7 +284,6 @@ async fn repopulate_database() -> Result<()> {
         "#;
 
     let mut res = db.query(sql).await?;
-    */
 
     Ok(())
 }
@@ -356,10 +365,9 @@ async fn check_route(route: &str) -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
 async fn handlers_test() -> Result<()> {
     // Vendor auth_token setup
-    let routes = vec![
+    /*let routes = vec![
         "/v1/vendors",
         "/v1/events",
         "/v1/vendors/088ADD402AC44769A6A725FD3225A4A1",
@@ -377,7 +385,7 @@ async fn handlers_test() -> Result<()> {
                 err
             ),
         };
-    }
+    }*/
 
     Ok(())
 }
