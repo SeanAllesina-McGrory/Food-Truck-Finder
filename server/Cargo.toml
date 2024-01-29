@@ -30,3 +30,4 @@ dotenv = "0.15.0"
 axum-server = { version = "^0.6", features = [ "tls-openssl" ] }
 log = "0.4.20"
 color-eyre = "0.6.2"
+geocoding = "0.4.0"
