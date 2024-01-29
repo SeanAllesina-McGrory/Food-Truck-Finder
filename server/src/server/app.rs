@@ -4,7 +4,7 @@ use crate::server::{
     state::AppState,
 };
 use axum::{
-    http::Method,
+    http::{header::CONTENT_TYPE, Method},
     middleware,
     routing::{get, post},
     Router,
@@ -21,7 +21,8 @@ use tower_http::cors::{Any, CorsLayer};
 pub async fn make_app() -> Result<Router> {
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH])
-        .allow_origin(Any);
+        .allow_origin(Any)
+        .allow_headers([CONTENT_TYPE]);
 
     // The valid endpoints for the API
     // Endpoints which can be accessed without authorization marked with *
@@ -126,21 +127,17 @@ pub async fn make_app() -> Result<Router> {
                 .layer(middleware::from_fn(authorizer)),
         );
 
-    let api = Router::new().nest("/api", endpoints);
+    let api = Router::new().nest("/api", endpoints).layer(cors);
     let auth = Router::new().route("/auth/token", post(crate::utils::auth::token));
 
-    let app = Router::new()
-        .merge(api)
-        .merge(auth)
-        .with_state(AppState {
-            db: match db_connect().await {
-                Ok(db) => db,
-                Err(err) => return Err(bail!(err)), // FIX : The database could not be created, if this happens a
-                                                    // panic is undesirable but likely, add correcting code
-                                                    // later
-            },
-        })
-        .layer(cors);
+    let app = Router::new().merge(api).merge(auth).with_state(AppState {
+        db: match db_connect().await {
+            Ok(db) => db,
+            Err(err) => return Err(bail!(err)), // FIX : The database could not be created, if this happens a
+                                                // panic is undesirable but likely, add correcting code
+                                                // later
+        },
+    });
     Ok(app)
 }
 
