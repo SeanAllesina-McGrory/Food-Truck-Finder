@@ -1,4 +1,4 @@
-use geocoding::{self, Forward};
+use geocoding::{Forward, Openstreetmap, Point};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -156,18 +156,6 @@ pub struct Event {
 
 impl Event {
     pub fn new(datetime: String, location: String, vendor: Option<Thing>) -> Self {
-        let address = location.clone();
-        // TODO: See about having a static instance of this
-        // PERF: Check on custom endpoint
-        let osm = geocoding::Openstreetmap::new();
-        let result = osm.forward(&address);
-        let cords = match result {
-            Ok(point_vec) => point_vec[0],
-            Err(err) => {
-                warn!("{}", err);
-                geocoding::Point::new(0.0, 0.0)
-            }
-        };
         Event {
             uuid: Cow::Owned(String::from(
                 Uuid::new_v4()
@@ -177,8 +165,8 @@ impl Event {
             name: "".into(),
             datetime: datetime.clone().into(),
             location: location.into(),
-            cord_x: cords.x(),
-            cord_y: cords.y(),
+            cord_x: 0.0,
+            cord_y: 0.0,
             menu: None,
             repeat_schedule: ReoccurancePattern::OneTime.into(),
             repeat_end: datetime.into(),
@@ -191,6 +179,12 @@ impl Event {
             tb: "vendors".into(),
             id: vendor_id.into(),
         });
+        self
+    }
+
+    pub fn with_cords(mut self, x: f64, y: f64) -> Self {
+        self.cord_x = x;
+        self.cord_y = y;
         self
     }
 }
